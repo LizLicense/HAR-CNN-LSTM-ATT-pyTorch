@@ -60,4 +60,3 @@ CNN-LSTM with HAPT dataset: ![CNN-LSTM with HAPT dataset](cnn-lstm-pyTorch/resul
 ### Future work
 
 Give an eye on the Attention Mechanism. In time series data, not every timestamp data makes the same difference. The Attention Mechanism may help to focus on the more important data.  
-# HAR-CNN-LSTM
