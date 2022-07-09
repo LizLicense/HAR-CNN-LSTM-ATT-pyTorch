@@ -52,12 +52,12 @@ Regarding HAPT dataset, it contains 1 inputswith 561 features. I split them into
 
 **CNN-LSTM** archetechture achived 95% accuracy in both dataset.
 
-CNN-LSTM with UCI dataset:
 ![CNN-LSTM with UCI dataset](cnn-lstm-pyTorch/result/plot_cnn-lstm_HAPT.png)
+CNN-LSTM with UCI dataset:
 
 
-CNN-LSTM with HAPT dataset:
 ![CNN-LSTM with HAPT dataset](cnn-lstm-pyTorch/result/plot_cnn-lstm_UCI.png)
+CNN-LSTM with HAPT dataset:
 
 ### Future work
 
