@@ -7,17 +7,13 @@ In github, there is no repo using **pyTorch nn ** with **conv1d and lstm** with 
 Since time series data is in 1 dimension, I amended JinDong's network file with conv2d into conv1d. 
 
 ## Paper and reference
-Architecture of CNN-LSTM networks refers to paper: [Hybrid Model Featuring CNN and LSTM Architecture for Human Activity Recognition on Smartphone Sensor Data](https://ieeexplore.ieee.org/document/9029136) by Samundra Deep; Xi Zheng ; 
-
-[A CNN-LSTM Approach to Human Activity Recognition](https://ieeexplore.ieee.org/document/9065078)by Ronald Mutegeki and Dong Seog Han.
+Architecture of CNN-LSTM networks refers to paper: [Hybrid Model Featuring CNN and LSTM Architecture for Human Activity Recognition on Smartphone Sensor Data](https://ieeexplore.ieee.org/document/9029136) by Samundra Deep; Xi Zheng ; [A CNN-LSTM Approach to Human Activity Recognition](https://ieeexplore.ieee.org/document/9065078)by Ronald Mutegeki and Dong Seog Han.
 
 Network Python code is implemented with reference by [Deep-learning-activity-recognition](https://github.com/jindongwang/Deep-learning-activity-recognition.git) by JinDong Wang.
 
 ## Dataset
 
-Dataset can be found in [UCI Dataset](https://archive.ics.uci.edu/ml/machine-learning-databases/00240/)
-
-[HAPT dataset](https://archive.ics.uci.edu/ml/machine-learning-databases/00341/)
+Dataset can be found in [UCI Dataset](https://archive.ics.uci.edu/ml/machine-learning-databases/00240/); [HAPT dataset](https://archive.ics.uci.edu/ml/machine-learning-databases/00341/)
 
 
 **Support Pytorch.**
@@ -55,6 +51,9 @@ Regarding UCI dataset, it contains 9 channels of the inputs: (acc_body, acc_tota
 Regarding HAPT dataset, it contains 1 inputswith 561 features. I split them into 3 x 187. So the input channel is 3.
 
 **CNN-LSTM** archetechture achived 95% accuracy in both dataset.
+![CNN-LSTM with UCI dataset](result/plot_cnn-lstm_HAPT.png)
+
+![CNN-LSTM with HAPT dataset](result/plot_cnn-lstm_UCI.png)
 
 ### Future work
 
