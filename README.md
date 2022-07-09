@@ -2,7 +2,7 @@
 
 > Deep learning is perhaps the nearest future of human activity recognition. While there are many existing non-deep method, we still want to unleash the full power of deep learning. This repo provides a demo of using deep learning to perform human activity recognition.
 
-In github, there is no repo using **pyTorch nn.with conv1d and lstm** with UCI and HAPT dataset. 
+In github, there is no repo using **pyTorch nn ** with **conv1d and lstm** with UCI and HAPT dataset. 
 
 Since time series data is in 1 dimension, I amended JinDong's network file with conv2d into conv1d. 
 
