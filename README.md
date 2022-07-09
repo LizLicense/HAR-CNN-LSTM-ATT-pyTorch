@@ -2,9 +2,9 @@
 
 > Deep learning is perhaps the nearest future of human activity recognition. While there are many existing non-deep method, we still want to unleash the full power of deep learning. This repo provides a demo of using deep learning to perform human activity recognition.
 
-In github, there is no repo using **pyTorch nn ** with **conv1d and lstm** with UCI and HAPT dataset. 
+In github, there is no repo using **pyTorch nn** with **conv1d and lstm** with UCI and HAPT dataset. 
 
-Since time series data is in 1 dimension, I amended JinDong's network file with conv2d into conv1d. 
+Since time series data is in 1 dimension, I amended JinDong's network file from conv2d into conv1d. 
 
 ## Paper and reference
 Architecture of CNN-LSTM networks refers to paper: [Hybrid Model Featuring CNN and LSTM Architecture for Human Activity Recognition on Smartphone Sensor Data](https://ieeexplore.ieee.org/document/9029136) by Samundra Deep; Xi Zheng ; [A CNN-LSTM Approach to Human Activity Recognition](https://ieeexplore.ieee.org/document/9065078) by Ronald Mutegeki and Dong Seog Han.
