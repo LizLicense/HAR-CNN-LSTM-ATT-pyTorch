@@ -51,8 +51,11 @@ Regarding UCI dataset, it contains 9 channels of the inputs: (acc_body, acc_tota
 Regarding HAPT dataset, it contains 1 inputswith 561 features. I split them into 3 x 187. So the input channel is 3.
 
 **CNN-LSTM** archetechture achived 95% accuracy in both dataset.
+
+CNN-LSTM with UCI dataset:
 ![CNN-LSTM with UCI dataset](cnn-lstm-pyTorch/result/plot_cnn-lstm_HAPT.png)
 
+CNN-LSTM with HAPT dataset:
 ![CNN-LSTM with HAPT dataset](cnn-lstm-pyTorch/result/plot_cnn-lstm_UCI.png)
 
 ### Future work
