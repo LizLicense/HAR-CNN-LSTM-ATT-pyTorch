@@ -1,4 +1,4 @@
-# A CNN-LSTM Approach to Human Activity Recognition with pyTorch with UCI and HAPT dataset
+# A CNN-LSTM Approach to Human Activity Recognition in pyTorch with UCI and HAPT dataset
 
 > Deep learning is perhaps the nearest future of human activity recognition. While there are many existing non-deep method, we still want to unleash the full power of deep learning. This repo provides a demo of using deep learning to perform human activity recognition.
 
