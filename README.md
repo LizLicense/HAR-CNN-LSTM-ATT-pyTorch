@@ -31,7 +31,7 @@ In this demo, we will use UCI and HAPT dataset as examples.
 
 ## Usage
 
-- Go to `HAR-CNN-LSTM` folder, config the folder of your data in `config.py', and then run `main_pytorch.py`.
+- Go to `HAR-CNN-LSTM` folder, config the folder of your data in `config.py`, and then run `main_pytorch.py`.
 
 
 ## Network structure
