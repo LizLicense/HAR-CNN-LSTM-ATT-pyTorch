@@ -12,14 +12,12 @@ Architecture of CNN-LSTM networks refers to paper: [Hybrid Model Featuring CNN a
 Network Python code is implemented with reference by [Deep-learning-activity-recognition](https://github.com/jindongwang/Deep-learning-activity-recognition.git) by JinDong Wang.
 
 ## Dataset
-
 Dataset can be found in [UCI Dataset](https://archive.ics.uci.edu/ml/machine-learning-databases/00240/); [HAPT dataset](https://archive.ics.uci.edu/ml/machine-learning-databases/00341/)
 
 
 **Support Pytorch.**
 
 ## Prerequisites
-
 - Python 3.x
 - Numpy
 - Pytorch 1.0+
@@ -30,33 +28,29 @@ In this demo, we will use UCI and HAPT dataset as examples.
 
 
 ## Usage
-
-- Go to `HAR-CNN-LSTM` folder, config the folder of your data in `config.py`, and then run `main_pytorch.py`.
+Go to `HAR-CNN-LSTM` folder, config the folder of your data in `config.py`, and then run `main_pytorch.py`.
 
 
 ## Network structure
-
 What is the most influential deep structure? CNN/RNN it is. So we'll use **CNN-LSTM** in our demo. 
 
-### CNN-lstm structure
-
+## CNN-lstm structure
 Convolution + pooling + convolution + pooling + lstm + dense + output
 
 That is: 2 convolutions, 2 poolings, 1 lstm, and 1 fully connected layers. 
 
-### About the inputs
-
+## About the inputs
 Regarding UCI dataset, it contains 9 channels of the inputs: (acc_body, acc_total and acc_gyro) on x-y-z. So the input channel is 9.
 
 Regarding HAPT dataset, it contains 1 inputswith 561 features. I split them into 3 x 187. So the input channel is 3.
 
 **CNN-LSTM** archetechture achived 95% accuracy in both dataset.
 
-CNN-LSTM with UCI dataset: ![CNN-LSTM with UCI dataset](cnn-lstm-pyTorch/result/plot_cnn-lstm_HAPT.png)
-
-CNN-LSTM with HAPT dataset: ![CNN-LSTM with HAPT dataset](cnn-lstm-pyTorch/result/plot_cnn-lstm_UCI.png)
+CNN-LSTM with UCI dataset:![CNN-LSTM with UCI dataset](cnn-lstm-pyTorch/result/plot_cnn-lstm_HAPT.png)
 
 
-### Future work
+CNN-LSTM with HAPT dataset:![CNN-LSTM with HAPT dataset](cnn-lstm-pyTorch/result/plot_cnn-lstm_UCI.png)
 
+
+## Future work
 Give an eye on the Attention Mechanism. In time series data, not every timestamp data makes the same difference. The Attention Mechanism may help to focus on the more important data.  
