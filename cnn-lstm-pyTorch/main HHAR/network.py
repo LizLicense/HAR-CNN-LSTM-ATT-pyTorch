@@ -9,7 +9,7 @@ class Network(nn.Module):
         super(Network, self).__init__()
         self.conv1 = nn.Sequential(
 
-            nn.Conv1d(in_channels = 3, out_channels = 32, kernel_size=7, stride=1, padding=2),            
+            nn.Conv1d(in_channels = 3, out_channels = 32, kernel_size=6, stride=1, padding=2),            
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2)
         )
@@ -25,31 +25,31 @@ class Network(nn.Module):
         self.lstm = nn.LSTM(input_size=32, hidden_size=32, num_layers=1)
         self.tanh = torch.nn.Tanh()
         # self.attn = TemporalAttn(hidden_size=32)
-        self.fc = nn.Linear(in_features=64*32, out_features=7)
+        self.fc = nn.Linear(in_features=64*32, out_features=6)
         self.softmax = torch.nn.Softmax(dim = 1)
 
 
     def forward(self, x):
-        print("1", x.dtype, x.shape)
+        # print("1", x.dtype, x.shape)
         x = x.permute(0,2,1)
         out = self.conv1(x)
-        print("c1", out.dtype, out.shape)
+        # print("c1", out.dtype, out.shape)
         out = self.conv2(out)
-        print("c2", out.dtype, out.shape)
+        # print("c2", out.dtype, out.shape)
         out = self.dropout(out)
-        print("dropout", out.shape, out.dtype)
+        # print("dropout", out.shape, out.dtype)
         out, hidden = self.lstm(out)
         out = self.tanh(out)
-        print("lstm", out.dtype, out.shape)
+        # print("lstm", out.dtype, out.shape)
         #*********attention************
         # out, weights=self.attn(out)
         # print("att", out.dtype, out.shape)
         #*********attention************
         out = self.flatten(out)
-        print("flatten", out.dtype, out.shape)
+        # print("flatten", out.dtype, out.shape)
         out = self.fc(out)
-        print("fc", out.dtype, out.shape)
+        # print("fc", out.dtype, out.shape)
         out = self.softmax(out)
-        print("sm", out.dtype, out.shape)
+        # print("sm", out.dtype, out.shape)
 
         return out

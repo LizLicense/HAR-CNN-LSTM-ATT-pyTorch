@@ -16,8 +16,6 @@ import pandas as pd
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 result = []
 
-# data_folder = '/Users/lizliao/Downloads/GitFYP_experiment/Dataset/'
-
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--nepoch', type=int, default=10)
@@ -25,7 +23,6 @@ def get_args():
     parser.add_argument('--lr', type=float, default=.001) #0.0003
     parser.add_argument('--momentum', type=float, default=.9)
     parser.add_argument('--data_folder', type=str, default='Dataset/HHAR_w/')
-    # parser.add_argument('--data_folder', type=str, default=data_folder)
     parser.add_argument('--seed', type=int, default=10)
     args = parser.parse_args()
     return args
@@ -42,7 +39,6 @@ def train(model, optimizer, train_loader, test_loader):
             sample, label = sample.to(
                 DEVICE).float(), label.to(DEVICE).long()
             output = model(sample)
-            print("ooo",label)
             loss = criterion(output, label)
 
             optimizer.zero_grad()
@@ -68,7 +64,7 @@ def valid(model, test_loader):
     model.eval()
     
     # classes = ('Biking','Sitting', 'Standing', 'Walking', 'Stair Up' , 'Stair down')
-    classes = ('stand', 'NaN', 'sit', 'walk', 'stairsup', 'stairsdown', 'bike')
+    classes = ('stand', 'sit', 'walk', 'stairsup', 'stairsdown', 'bike')
     y_pred = []
     y_true = []
     f1 = []
@@ -97,9 +93,6 @@ def valid(model, test_loader):
     sn.heatmap(df_cm, annot=True)
     plt.savefig('confusion matrix_HHAR.png')    
     f1 = f1_score(y_true, y_pred, average=None)# F1 Score = 2* Precision Score * Recall Score/ (Precision Score + Recall Score/)
-    print('f1:', f1)
-    ########
-
     return acc_test
 
 
