@@ -1,3 +1,21 @@
+## How to run
+1. `Dataset` foler: 3 datasets, UCI, HAPT, and HHAR.
+
+
+2. `pytorch` folder:
+`mian_pytorch.py`: 
+CNN-LSTM model: cd to `GitFYP_experiment` folder, run the `mian_pytorch.py` in `pytorch/HAPT`, `pytorch/HHAR`, and `pytorch/UCI` folder. 
+
+CNN-LSTM-ATT model: in `Attention` folder.
+
+`network.py`: used for the model network structure.
+
+`data_preprocess.py`: used for data preprocession, data formatting, train and test loader, etc.
+
+3. `result` folder: stored the confusion matrix, train&test accuracy, and f1 score files.
+
+
+
 # A CNN-LSTM Approach to Human Activity Recognition in pyTorch with UCI and HAPT dataset
 
 > Deep learning is perhaps the nearest future of human activity recognition. While there are many existing non-deep method, we still want to unleash the full power of deep learning. This repo provides a demo of using deep learning to perform human activity recognition.
@@ -54,3 +72,7 @@ CNN-LSTM with HAPT dataset:![CNN-LSTM with HAPT dataset](cnn-lstm-pyTorch/result
 
 ## Future work
 Give an eye on the Attention Mechanism. In time series data, not every timestamp data makes the same difference. The Attention Mechanism may help to focus on the more important data.  
+
+
+
+
