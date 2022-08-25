@@ -18,7 +18,7 @@ result = []
 f1_result = []
 classes = ['stand', 'sit', 'walk', 'stairsup', 'stairsdown', 'bike']
 
-result_path='wip:tut:CNN-LSTM-ATT-torch/result/HHAR/'
+result_path='result/HHAR/'
 testAcc_csv=result_path+'result_cnn-lstm-att_HHAR_phone_acc.csv'
 f1_csv=result_path+'result_f1_HHAR-att_phone_acc.csv'
 confusion_img=result_path+'confusion matrix_HHAR-att_phone_acc.png'
@@ -32,7 +32,6 @@ def get_args():
     parser.add_argument('--lr', type=float, default=.001) #0.0003
     parser.add_argument('--momentum', type=float, default=.9)
     parser.add_argument('--data_folder', type=str, default='Dataset/')
-    # parser.add_argument('--data_folder', type=str, default=data_folder)
     parser.add_argument('--seed', type=int, default=10)
     args = parser.parse_args()
     return args

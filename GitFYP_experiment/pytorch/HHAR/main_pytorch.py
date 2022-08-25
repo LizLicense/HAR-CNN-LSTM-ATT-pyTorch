@@ -19,7 +19,7 @@ f1_result = []
 data_folder = 'Dataset/'
 classes = ['stand', 'sit', 'walk', 'stairsup', 'stairsdown', 'bike']
 
-result_path=' result/HHAR/'
+result_path='result/HHAR/'
 testAcc_csv=result_path+'result_cnn-lstm_HHAR_watch_acc.csv'
 f1_csv=result_path+'result_f1_HHAR_watch_acc.csv'
 confusion_img=result_path+'confusion matrix_HHAR_watch_acc.png'

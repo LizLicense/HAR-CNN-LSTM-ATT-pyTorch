@@ -18,7 +18,7 @@ result = []
 f1_result = []
 classes = ['WALKING', 'WALKING_UPSTAIRS', 'WALKING_DOWNSTAIRS', 'SITTING', 'STANDING', 'LAYING', "STAND_TO_SIT", "SIT_TO_STAND", "SIT_TO_LIE", "LIE_TO_SIT", "STAND_TO_LIE", "LIE_TO_STAND" ]
 
-result_path='/Users/lizliao/Downloads/GitFYP_experiment/wip:tut:CNN-LSTM-ATT-torch/result/HAPT/'
+result_path='result/HAPT/'
 testAcc_csv=result_path+'result_cnn-lstm-att_HAPT.csv'
 f1_csv=result_path+'result_f1_HAPT_att.csv'
 confusion_img=result_path+'confusion matrix_HAPT_att.png'
@@ -101,8 +101,8 @@ def valid(model, test_loader):
     f1 = f1_score(y_true, y_pred, average=None)# F1 Score = 2* Precision Score * Recall Score/ (Precision Score + Recall Score/)
     f1_result.append(f1)
     f1_result_np = np.array(f1_result, dtype=float)
-    np.savetxt(f1_csv, f1_result_np, fmt='%.2f', delimiter=',')
-    print(f1, np.average(f1))
+    np.savetxt(f1_csv, f1_result_np, fmt='%.4f', delimiter=',')
+    print("f1: ", np.average(f1))
     # print("acc_test111",acc_test)
     return acc_test
 
@@ -132,7 +132,7 @@ def avg_F1_Acc():
     total=0
     for i in df_f1.mean():
         total=total+i
-    print(f"f1 average:{total/len(classes):.2f}")
+    print(f"f1 average:{total/len(classes):.4f}")
 
     # # accuracy avg
     data_acc = np.loadtxt(testAcc_csv, delimiter=',')
