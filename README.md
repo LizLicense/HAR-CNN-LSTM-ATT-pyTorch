@@ -1,5 +1,6 @@
 ## How to run
-1. activate env: `conda activate base`
+1. The environment.yml file to activate env: `conda activate base` 
+
 
 2. `Dataset` foler: 3 datasets, UCI, HAPT, and HHAR.
 
