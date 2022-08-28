@@ -1,5 +1,5 @@
 ## How to run
-1. activate env: `conda activate torch`
+1. activate env: `conda activate base`
 
 2. `Dataset` foler: 3 datasets, UCI, HAPT, and HHAR.
 
