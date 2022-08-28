@@ -1,8 +1,10 @@
 ## How to run
-1. `Dataset` foler: 3 datasets, UCI, HAPT, and HHAR.
+1. activate env: `conda activate torch`
+
+2. `Dataset` foler: 3 datasets, UCI, HAPT, and HHAR.
 
 
-2. `pytorch` folder:
+3. `pytorch` folder:
 `mian_pytorch.py`: 
 CNN-LSTM model: cd to `GitFYP_experiment` folder, run the `mian_pytorch.py` in `pytorch/HAPT`, `pytorch/HHAR`, and `pytorch/UCI` folder. 
 
@@ -12,7 +14,7 @@ CNN-LSTM-ATT model: in `Attention` folder.
 
 `data_preprocess.py`: used for data preprocession, data formatting, train and test loader, etc.
 
-3. `result` folder: stored the confusion matrix, train&test accuracy, and f1 score files.
+4. `result` folder: stored the confusion matrix, train&test accuracy, and f1 score files.
 
 
 
