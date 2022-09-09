@@ -12,7 +12,7 @@ from sklearn.metrics import confusion_matrix
 import seaborn as sn
 import pandas as pd
 
-DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
 result = []
 f1_result = []
 classes = ['WALKING', 'WALKING_UPSTAIRS',  'WALKING_DOWNSTAIRS','SITTING', 'STANDING', 'LAYING']
@@ -45,7 +45,7 @@ def train(model, optimizer, train_loader, test_loader):
         total = 0
         for sample, label in train_loader:
             sample, label = sample.to(
-                DEVICE).float(), label.to(DEVICE).long()
+                DEVICE, dtype=torch.float32).float(), label.to(DEVICE).long()
             output = model(sample)
             loss = criterion(output, label)
             optimizer.zero_grad()
@@ -79,11 +79,13 @@ def valid(model, test_loader):
         correct, total = 0, 0
         for sample, label in test_loader:
             sample, label = sample.to(
-                DEVICE).float(), label.to(DEVICE).long()
+                DEVICE, dtype=torch.float32).float(), label.to(DEVICE).long()
             output = model(sample)
             _, predicted = torch.max(output.data, 1)
             
             y_pred.extend(predicted)
+            y_pred = y_pred
+
             y_true.extend(label)
             f1.extend(f1)
             
