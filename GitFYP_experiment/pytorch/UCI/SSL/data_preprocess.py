@@ -6,7 +6,7 @@ import os
 datafolder ='UCI HAR Dataset/data/'
 import configs 
 configs = configs.Config()
-
+# ref: https://github.com/emadeldeen24/TS-TCC.git
 # This is for parsing the X data, you can ignore it if you do not need preprocessing
 def format_data_x(datafile):
     x_data = None

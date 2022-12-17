@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-
+#ref: https://github.com/emadeldeen24/TS-TCC.git
 
 def DataTransform(sample, config):
 
