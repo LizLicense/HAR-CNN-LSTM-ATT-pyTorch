@@ -31,7 +31,7 @@ class Network(nn.Module):
 
     def forward(self, x):
         #print("1", x.dtype, x.shape)
-        x = x.permute(0,2,1)
+        # x = x.permute(0,2,1) 
         out = self.conv1(x)
         #print("c1", out.dtype, out.shape)
         out = self.conv2(out)

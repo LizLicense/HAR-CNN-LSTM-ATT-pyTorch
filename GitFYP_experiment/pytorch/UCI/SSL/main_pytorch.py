@@ -17,6 +17,7 @@ DEVICE = torch.device('cpu')
 # cpu = torch.device('cpu')
 # DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
 
+data_folder = '../datapt/'
 result = []
 f1_result = []
 classes = ['WALKING', 'WALKING_UPSTAIRS',  'WALKING_DOWNSTAIRS','SITTING', 'STANDING', 'LAYING']
@@ -34,9 +35,10 @@ def get_args():
     parser.add_argument('--batchsize', type=int, default=64) #128 64
     parser.add_argument('--lr', type=float, default=.001) #0.0003
     parser.add_argument('--momentum', type=float, default=.9)
-    parser.add_argument('--data_folder', type=str, default='/Users/lizliao/Downloads/GitFYP_experiment/Dataset/')
+    parser.add_argument('--data_folder', type=str, default='../datapt/')
+    # parser.add_argument('--data_folder', type=str, default=data_folder)
     parser.add_argument('--seed', type=int, default=10)
-    parser.add_argument('--training_mode', type=str, default='supervised', 
+    parser.add_argument('--training_mode', type=str, default='self_supervised', 
                     help='Modes of choice: random_init, supervised, self_supervised, fine_tune, train_linear')
     args = parser.parse_args()
     return args
@@ -44,45 +46,41 @@ def get_args():
 
 def train(model, optimizer, train_loader, test_loader, training_mode):
     criterion = nn.CrossEntropyLoss()
+    # get model
+    if training_mode == "self_supervised":
+        print(training_mode)
+        loss, model = ssl_update(sample)
+    elif training_mode == "ft":
+        print(training_mode)
+        # load saved models
+        chkpoint = torch.load('checkpoint.pt')
+
+        loss, model = surpervised_update(sample)
+
     for e in range(args.nepoch):
         model.train()
         correct, total_loss = 0, 0
         total = 0
-        for sample, label, aug1, aug2 in train_loader:
+        best_f1 = 0
+        best_acc = 0
+        for sample, label in train_loader:
             #send to device
             sample, label = sample.to(DEVICE, dtype=torch.float32).float(), label.to(DEVICE).long()
-            aug1, aug2 = aug1.float().to(DEVICE), aug2.float().to(DEVICE)
+
             
             optimizer.zero_grad()
 
             if training_mode == "self_supervised":
-                predictions1, features1 = model(aug1)
-                predictions2, features2 = model(aug2)
-
-                # normalize projection feature vectors
-                features1 = F.normalize(features1, dim=1)
-                features2 = F.normalize(features2, dim=1)
-
-                temp_cont_loss1, temp_cont_lstm_feat1 = temporal_contr_model(features1, features2)
-                temp_cont_loss2, temp_cont_lstm_feat2 = temporal_contr_model(features2, features1)
-
-                # normalize projection feature vectors
-                zis = temp_cont_lstm_feat1 
-                zjs = temp_cont_lstm_feat2 
-
-            else:
-
+                # save the best model
+                # to revise
+                save_checkpoint(self.home_path, model, self.dataset, self.dataset_configs, self.scenario_log_dir,
+                            self.hparams)
+                        
+            elif training_mode != "self_supervised" : # supervised training or fine tuining 
+                # re-organize the testing and evaluate part
+                # to revise
                 output = model(sample)
-        
-            # compute loss
-            if training_mode == "self_supervised":
-                lambda1 = 1
-                lambda2 = 0.7
-                nt_xent_criterion = NTXentLoss(device, config.batch_size, config.Context_Cont.temperature,
-                                            config.Context_Cont.use_cosine_similarity)
-                loss = (temp_cont_loss1 + temp_cont_loss2) * lambda1 +  nt_xent_criterion(zis, zjs) * lambda2
-                
-            else: # supervised training or fine tuining
+                print(training_mode)
                 predictions, features = output
                 loss = criterion(predictions, label)
                 total_acc.append(label.eq(predictions.detach().argmax(dim=1)).float().mean())
@@ -96,9 +94,9 @@ def train(model, optimizer, train_loader, test_loader, training_mode):
             correct += (predicted == label).sum()
             
         acc_train = float(correct) * 100.0 / len(train_loader.dataset)
-
+        
+ 
         # Testing
-
         if training_mode == "self_supervised":
             total_acc = 0
         else:
@@ -138,7 +136,8 @@ def valid(model, test_loader, training_mode):
             correct += (predicted == label).sum()
     acc_test = float(correct) * 100 / total
     
-    # Build confusion matrix
+    # to revise
+    # Build confusion matrix -> as a sperate function
     cf_matrix = confusion_matrix(y_true, y_pred)
     df_cm = pd.DataFrame(cf_matrix/np.sum(cf_matrix) *10, index = [i for i in classes],
                         columns = [i for i in classes])
@@ -152,7 +151,48 @@ def valid(model, test_loader, training_mode):
     print("f1: ", np.average(f1))
     return acc_test
 
+def ssl_update(self, samples):
+    # ====== Data =====================
+    data = samples["transformed_samples"].float()
+    labels = samples["aux_labels"].long()
 
+    self.optimizer.zero_grad()
+
+    features = self.feature_extractor(data)
+    features = features.flatten(1, 2)
+    
+    logits = self.classifier(features)
+
+    # Cross-Entropy loss
+    loss = self.cross_entropy(logits, labels)
+
+    loss.backward()
+    self.optimizer.step()
+
+    return {'Total_loss': loss.item()}, \
+            [self.feature_extractor, self.temporal_encoder, self.classifier]
+
+def surpervised_update(self, samples):
+        # ====== Data =====================
+        data = samples['sample_ori'].float()
+        labels = samples['class_labels'].long()
+
+        # ====== Source =====================
+        self.optimizer.zero_grad()
+
+        # Src original features
+        features = self.feature_extractor(data)
+        features = self.temporal_encoder(features)
+        logits = self.classifier(features)
+
+        # Cross-Entropy loss
+        x_ent_loss = self.cross_entropy(logits, labels)
+
+        x_ent_loss.backward()
+        self.optimizer.step()
+
+        return {'Total_loss': x_ent_loss.item()}, \
+               [self.feature_extractor, self.temporal_encoder, self.classifier]
 def plot():
     data = np.loadtxt(testAcc_csv, delimiter=',')
     plt.figure()
@@ -193,7 +233,8 @@ def avg_F1_Acc():
     testAvg = mean_trans.loc["average", "test_acc"]
     print(f"train acc avg: {trainAvg:.2f}, test acc avg: {testAvg:.2f}")
 
-
+# data_folder = '../datapt/'
+# load_data(data_folder, "self_supervised","permute_timeShift_scale_noise", False)
 if __name__ == '__main__':
     args = get_args()
     print(args.training_mode)
