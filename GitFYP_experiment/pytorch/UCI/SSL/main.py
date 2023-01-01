@@ -13,6 +13,7 @@ from sklearn.metrics import confusion_matrix
 import seaborn as sn
 import pandas as pd
 import torch.nn.functional as F
+from utils import AverageMeter, to_device, _save_metrics, copy_Files, starting_logs, save_checkpoint, _calc_metrics
 
 DEVICE = torch.device('cpu')
 # cpu = torch.device('cpu')
@@ -117,9 +118,8 @@ def train(model, optimizer, train_loader, test_loader, training_mode):
     for e in range(args.nepoch):
         model.train()
         correct, total_loss = 0, 0
-        total = 0
-        best_f1 = 0
-        best_acc = 0
+        f1, best_f1 = 0
+        acc, best_acc = 0
         for sample, label in train_loader:
             #send data to device
             sample = sample.to(DEVICE, dtype=torch.float32).float()
@@ -129,6 +129,7 @@ def train(model, optimizer, train_loader, test_loader, training_mode):
                 print(training_mode)
                 # data pass to update(), return model
                 losses, model = ssl_update(sample)
+                total_loss = total_loss + losses
                 # cal metrics
                 
                         
@@ -138,29 +139,19 @@ def train(model, optimizer, train_loader, test_loader, training_mode):
                 losses, model = surpervised_update(sample)
                 # cal metrics f1 acc rate
                 calc_results_per_run()
+                total_loss = total_loss + losses
                 # testing
                 valid(model, test_loader)
                 # save best model 
-
-                # save checkpoint
-                # output = model(sample)
-                # predictions, features = output
-                # loss = criterion(predictions, label)
-                # total_acc.append(label.eq(predictions.detach().argmax(dim=1)).float().mean())
-                # loss = criterion(output, label)
-                # loss.backward()
-                # optimizer.step()
-                # total_loss += loss.item()
-                # _, predicted = torch.max(output.data, 1) #_is the value, predicted is the value index
-                # total += label.size(0)
-                # correct += (predicted == label).sum()
-                # acc_train = float(correct) * 100.0 / len(train_loader.dataset)
-                # Testing
-                # acc_test = valid(model, test_loader)
-                # print(f'Epoch: [{e}/{args.nepoch}], loss:{total_loss / len(train_loader):.4f}, train_acc: {acc_train:.2f}, test_acc: {acc_test:.2f}')
-                # result.append([acc_train, acc_test])
-                # result_np = np.array(result, dtype=float)
-                # np.savetxt(testAcc_csv, result_np, fmt='%.2f', delimiter=',')
+                #model saved
+                if f1 > best_f1:  # save best model based on best f1.
+                    best_f1 = f1
+                    best_acc = acc
+                    cp_file = os.path.join(dataset_name, "_best_checkpoint.pt")
+                    torch.save(save_path, cp_file)
+                    save_results()
+                    
+    print(f'Epoch: [{e}/{args.nepoch}], loss:{total_loss / len(train_loader):.4f}, train_acc: {acc_train:.2f}, test_acc: {acc_test:.2f}')
     # save checkpoint
     if training_mode == "ssl":       
         cp_file = os.path.join(dataset_name, "_checkpoint.pt")
@@ -184,7 +175,6 @@ def valid(model, test_loader, training_mode):
                 pass
             else:
                 output = model(sample)
-            # _, predicted = torch.max(output.data, 1)
             _, predicted = torch.max(output.data, 1)
             
             y_pred.extend(predicted)
@@ -195,8 +185,10 @@ def valid(model, test_loader, training_mode):
             correct += (predicted == label).sum()
     acc_test = float(correct) * 100 / total
     
+    # save metrics
+    _save_metrics(y_pred, y_true, save_path)
     # to revise
-    # Build confusion matrix -> as a sperate function
+    # Build confusion matrix
     cf_matrix = confusion_matrix(y_true, y_pred)
     df_cm = pd.DataFrame(cf_matrix/np.sum(cf_matrix) *10, index = [i for i in classes],
                         columns = [i for i in classes])
@@ -256,16 +248,19 @@ def surpervised_update(self, samples):
 def calc_results_per_run(self):
         self.acc, self.f1 = _calc_metrics(self.pred_labels, self.true_labels, self.dataset_configs.class_names)
 
-def _calc_metrics(pred_labels, true_labels, classes_names):
-    pred_labels = np.array(pred_labels).astype(int)
-    true_labels = np.array(true_labels).astype(int)
+def save_results(self):
+        run_metrics = {'accuracy': self.best_acc, 'f1_score': self.best_f1}
+        df = pd.DataFrame(columns=["acc", "f1"])
+        df.loc[0] = [self.acc, self.f1]
 
-    r = classification_report(true_labels, pred_labels, target_names=classes_names, digits=6, output_dict=True)
-    accuracy = accuracy_score(true_labels, pred_labels)
+        for (key, val) in run_metrics.items(): self.metrics[key].append(val)
 
-    return accuracy * 100, r["macro avg"]["f1-score"] * 100
+        scores_save_path = os.path.join(self.home_path, self.scenario_log_dir, "scores.xlsx")
+        df.to_excel(scores_save_path, index=False)
+        self.results_df = df
 
-    
+
+
 def plot():
     data = np.loadtxt(testAcc_csv, delimiter=',')
     plt.figure()
