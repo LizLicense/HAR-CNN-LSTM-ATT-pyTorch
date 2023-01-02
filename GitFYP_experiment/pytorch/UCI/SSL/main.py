@@ -22,7 +22,7 @@ DEVICE = torch.device('cpu')
 
 data_folder = '../datapt/'
 save_dict = '../checkpoint_load/'
-save_path = '../checkpoint_saved/'
+save_path = '/checkpoint_saved/'
 result = []
 f1_result = []
 classes = ['WALKING', 'WALKING_UPSTAIRS',  'WALKING_DOWNSTAIRS','SITTING', 'STANDING', 'LAYING']
@@ -128,7 +128,7 @@ def train(model, optimizer, train_loader, test_loader, training_mode):
                 # data pass to update(), return model
                 # losses, model = ssl_update(sample)
                 losses = ssl_update(sample)
-                total_loss = total_loss + losses
+                
                 # cal metrics           
             elif training_mode != "ssl" : # supervised training or fine tuining 
                 # to revise
@@ -136,7 +136,7 @@ def train(model, optimizer, train_loader, test_loader, training_mode):
                 losses = surpervised_update(sample)
                 # cal metrics f1 acc rate
                 calc_results_per_run()
-                total_loss = total_loss + losses.values()
+                # total_loss = total_loss + losses
                 # testing
                 valid(model, test_loader)
                 # save best model 
@@ -148,11 +148,13 @@ def train(model, optimizer, train_loader, test_loader, training_mode):
                     torch.save(save_path, cp_file)
                     save_results()
                     
-    print(training_mode)
-    print(f'Epoch: [{e}/{args.nepoch}], loss:{total_loss / len(train_loader):.4f}')
+            total_loss = total_loss + losses
+        # print(f'Epoch: [{e}/{args.nepoch}], loss:{total_loss / len(train_loader):.4f}')
+        print(f'Epoch: [{e}/{args.nepoch}], loss:{total_loss:.4f}')
     # save checkpoint
+    print(training_mode)
     if training_mode == "ssl":       
-        cp_file = os.path.join(args.dataset, "_checkpoint.pt")
+        cp_file = args.dataset+"_checkpoint.pt"
         torch.save(save_path, cp_file)
 
 def valid(model, test_loader, training_mode):
@@ -237,12 +239,12 @@ def surpervised_update( samples):
         # logits = classifier(features)
         features = model(data)
         # Cross-Entropy loss
-        x_ent_loss = cross_entropy(features, labels)
+        x_ent_loss = criterion(features, labels)
 
         x_ent_loss.backward()
         optimizer.step()
 
-        return loss.item()
+        return x_ent_loss.item()
         # return {'Total_loss': x_ent_loss.item()}, \
         #        [feature_extractor, temporal_encoder, classifier]
 
