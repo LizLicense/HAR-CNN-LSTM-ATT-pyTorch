@@ -55,7 +55,7 @@ class data_loader(Dataset):
 
     def __getitem__(self, index):
         # sample, target = self.samples[index], self.labels[index]
-        if self.training_mode == "self_supervised":
+        if self.training_mode == "self_supervised" or self.training_mode == "ssl":
             transformed_samples = apply_transformation(self.x_data[index], self.augmentation)
             order = np.random.randint(self.num_transformations)
             transformed_sample = transformed_samples[order]
@@ -81,8 +81,7 @@ class data_loader(Dataset):
 # if there exists parsed data file, then use it
 # If not, parse the original dataset from scratch
 def load_data(data_folder, train_mode, augmentation, oversample):
-    
-        print("111")
+        # print("111")
         # load .pt file
         train_data = torch.load(data_folder + 'train.pt')
         val_data = torch.load(data_folder + 'val.pt')
@@ -100,14 +99,15 @@ def load_data(data_folder, train_mode, augmentation, oversample):
 
         val_loader = torch.utils.data.DataLoader(dataset=val_dataset, batch_size=batch_size,
                                                 shuffle=False, drop_last=True, num_workers=0)
+        
+        # for samples, _, _ in train_loader:
+            # data = samples["transformed_samples"][0]
+            # labels = samples["aux_labels"].long()
+            # print(samples["transformed_samples"].float())
         return train_loader, val_loader
-        # X_train = train_data['samples']
-        # Y_train = train_data['labels']
-        # X_test = test_data['samples']
-        # Y_test = test_data['labels']
 
 
-# def load_data(data_folder, train_mode, ssl_method, augmentation, oversample):
+
 
 # data_folder = '../datapt/'
 # load_data(data_folder, "self_supervised","permute_timeShift_scale_noise", False)

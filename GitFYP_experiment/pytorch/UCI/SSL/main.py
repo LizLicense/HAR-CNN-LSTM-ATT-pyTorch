@@ -1,5 +1,5 @@
 from itertools import accumulate
-from data_preprocess import data_loader
+from data_loader import load_data
 import matplotlib.pyplot as plt
 import network as net
 import numpy as np
@@ -19,7 +19,7 @@ DEVICE = torch.device('cpu')
 # cpu = torch.device('cpu')
 # DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
 
-dataset_name = "UCI"
+
 data_folder = '../datapt/'
 save_dict = '../checkpoint_load/'
 save_path = '../checkpoint_saved/'
@@ -33,6 +33,7 @@ f1_csv=result_path+'result_f1_cnn-lstm_UCI.csv'
 confusion_img=result_path+'confusion matrix_cnn-lstm_UCI.png'
 plot_img=result_path+'plot_cnn-lstm_UCI.png'
 
+criterion = nn.CrossEntropyLoss()
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -43,6 +44,8 @@ def get_args():
     parser.add_argument('--data_folder', type=str, default='../datapt/')
     # parser.add_argument('--data_folder', type=str, default=data_folder)
     parser.add_argument('--seed', type=int, default=10)
+
+    parser.add_argument('--dataset', type=str, default='UCI', help='HAPT OR HHAR')
     parser.add_argument('--training_mode', type=str, default='ssl', 
                     help='Modes of choice: supervised, ssl, ft')
     parser.add_argument('--augmentation', type=str, default='noise_permute',    
@@ -102,14 +105,8 @@ training completion
 
 '''
 def train(model, optimizer, train_loader, test_loader, training_mode):
-    criterion = nn.CrossEntropyLoss()
-    # get model
-    # if training_mode == "ssl":
-    #     print(training_mode)
-    #     pass
 
     if training_mode == "ft":
-        print(training_mode)
         # load saved models
         chekpoint = torch.load(os.path.join(data_folder,'checkpoint.pt'))
         # model=chekpoint
@@ -118,28 +115,28 @@ def train(model, optimizer, train_loader, test_loader, training_mode):
     for e in range(args.nepoch):
         model.train()
         correct, total_loss = 0, 0
-        f1, best_f1 = 0
-        acc, best_acc = 0
-        for sample, label in train_loader:
+        best_f1 = 0
+        best_acc = 0
+        for sample in train_loader:
+            # print(type(sample))
             #send data to device
-            sample = sample.to(DEVICE, dtype=torch.float32).float()
+            sample=to_device(sample, args.device)
+            # sample = sample.to(DEVICE, dtype=torch.float32).float()
             optimizer.zero_grad()
 
             if training_mode == "ssl":
-                print(training_mode)
                 # data pass to update(), return model
-                losses, model = ssl_update(sample)
+                # losses, model = ssl_update(sample)
+                losses = ssl_update(sample)
                 total_loss = total_loss + losses
-                # cal metrics
-                
-                        
+                # cal metrics           
             elif training_mode != "ssl" : # supervised training or fine tuining 
-                print(training_mode)
                 # to revise
-                losses, model = surpervised_update(sample)
+                # losses, model = surpervised_update(sample)
+                losses = surpervised_update(sample)
                 # cal metrics f1 acc rate
                 calc_results_per_run()
-                total_loss = total_loss + losses
+                total_loss = total_loss + losses.values()
                 # testing
                 valid(model, test_loader)
                 # save best model 
@@ -147,14 +144,15 @@ def train(model, optimizer, train_loader, test_loader, training_mode):
                 if f1 > best_f1:  # save best model based on best f1.
                     best_f1 = f1
                     best_acc = acc
-                    cp_file = os.path.join(dataset_name, "_best_checkpoint.pt")
+                    cp_file = os.path.join(args.dataset, "_best_checkpoint.pt")
                     torch.save(save_path, cp_file)
                     save_results()
                     
-    print(f'Epoch: [{e}/{args.nepoch}], loss:{total_loss / len(train_loader):.4f}, train_acc: {acc_train:.2f}, test_acc: {acc_test:.2f}')
+    print(training_mode)
+    print(f'Epoch: [{e}/{args.nepoch}], loss:{total_loss / len(train_loader):.4f}')
     # save checkpoint
     if training_mode == "ssl":       
-        cp_file = os.path.join(dataset_name, "_checkpoint.pt")
+        cp_file = os.path.join(args.dataset, "_checkpoint.pt")
         torch.save(save_path, cp_file)
 
 def valid(model, test_loader, training_mode):
@@ -202,48 +200,51 @@ def valid(model, test_loader, training_mode):
     print("f1: ", np.average(f1))
     return acc_test
 
-def ssl_update(self, samples):
+def ssl_update(samples):
     # ====== Data =====================
     data = samples["transformed_samples"].float()
     labels = samples["aux_labels"].long()
 
-    self.optimizer.zero_grad()
 
-    features = self.feature_extractor(data)
-    features = features.flatten(1, 2)
+    optimizer.zero_grad()
+
+    features = model(data)
+    # features = features.flatten(1, 2)
     
-    logits = self.classifier(features)
+    # logits = classifier(features)
 
     # Cross-Entropy loss
-    loss = self.cross_entropy(logits, labels)
-
+    loss = criterion(features, labels)
+    
     loss.backward()
-    self.optimizer.step()
+    optimizer.step()
+    
+    return loss.item()
+    # return {'Total_loss': loss.item()}, \
+    #         # [feature_extractor, temporal_encoder, classifier]
 
-    return {'Total_loss': loss.item()}, \
-            [self.feature_extractor, self.temporal_encoder, self.classifier]
-
-def surpervised_update(self, samples):
+def surpervised_update( samples):
         # ====== Data =====================
         data = samples['sample_ori'].float()
         labels = samples['class_labels'].long()
 
         # ====== Source =====================
-        self.optimizer.zero_grad()
+        optimizer.zero_grad()
 
         # Src original features
-        features = self.feature_extractor(data)
-        features = self.temporal_encoder(features)
-        logits = self.classifier(features)
-
+        # features = feature_extractor(data)
+        # features = temporal_encoder(features)
+        # logits = classifier(features)
+        features = model(data)
         # Cross-Entropy loss
-        x_ent_loss = self.cross_entropy(logits, labels)
+        x_ent_loss = cross_entropy(features, labels)
 
         x_ent_loss.backward()
-        self.optimizer.step()
+        optimizer.step()
 
-        return {'Total_loss': x_ent_loss.item()}, \
-               [self.feature_extractor, self.temporal_encoder, self.classifier]
+        return loss.item()
+        # return {'Total_loss': x_ent_loss.item()}, \
+        #        [feature_extractor, temporal_encoder, classifier]
 
 def calc_results_per_run(self):
         self.acc, self.f1 = _calc_metrics(self.pred_labels, self.true_labels, self.dataset_configs.class_names)
@@ -309,7 +310,7 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)
     # train_loader, test_loader = data_preprocess.load(
     #     args.data_folder, batch_size=args.batchsize, training_mode=args.training_mode)
-    train_loader, test_loader = data_loader.load_data(args.data_folder, training_mode=args.training_mode, 
+    train_loader, test_loader = load_data(args.data_folder, args.training_mode, 
                                 augmentation=args.augmentation, oversample=args.oversample)
     #load model
     model = net.Network().to(DEVICE)
@@ -319,9 +320,9 @@ if __name__ == '__main__':
     # Train model
     train(model, optimizer, train_loader, test_loader, args.training_mode)
 
-    result = np.array(result, dtype=float)
-    np.savetxt(testAcc_csv, result, fmt='%.2f', delimiter=',')
-    plot()
-    avg_F1_Acc()
+    # result = np.array(result, dtype=float)
+    # np.savetxt(testAcc_csv, result, fmt='%.2f', delimiter=',')
+    # plot()
+    # avg_F1_Acc()
     
     
