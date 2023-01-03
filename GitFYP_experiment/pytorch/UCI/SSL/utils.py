@@ -77,17 +77,17 @@ def starting_logs(data_type, ssl_method, sleep_model, train_mode, exp_log_dir, f
     return logger, log_dir
 
 
-def save_checkpoint(home_path, model, dataset, dataset_configs, log_dir, hparams):
+def save_checkpoint(home_path, model, dataset):
     save_dict = {
         "dataset": dataset,
-        "configs": dataset_configs.__dict__,
-        "hparams": dict(hparams),
+        # "configs": dataset_configs.__dict__,
+        # "hparams": dict(hparams),
         "fe": model[0].state_dict(),
         "te": model[1].state_dict(),
         "clf": model[2].state_dict()
     }
     # save classification report
-    save_path = os.path.join(home_path, log_dir, "checkpoint.pt")
+    save_path = os.path.join(home_path, dataset, "checkpoint.pt")
 
     torch.save(save_dict, save_path)
 
@@ -102,11 +102,12 @@ def _calc_metrics(pred_labels, true_labels, classes_names):
     return accuracy * 100, r["macro avg"]["f1-score"] * 100
 
 
-def _save_metrics(pred_labels, true_labels, log_dir, home_path, classes_names):
+def _save_metrics(pred_labels, true_labels, home_path):
     pred_labels = np.array(pred_labels).astype(int)
     true_labels = np.array(true_labels).astype(int)
 
-    r = classification_report(true_labels, pred_labels, target_names=classes_names, digits=6, output_dict=True)
+    # r = classification_report(true_labels, pred_labels, target_names=classes_names, digits=6, output_dict=True)
+    r = classification_report(true_labels, pred_labels, digits=6, output_dict=True)
 
     df = pd.DataFrame(r)
     accuracy = accuracy_score(true_labels, pred_labels)
@@ -115,7 +116,7 @@ def _save_metrics(pred_labels, true_labels, log_dir, home_path, classes_names):
 
     # save classification report
     file_name = "classification_report.xlsx"
-    report_Save_path = os.path.join(home_path, log_dir, file_name)
+    report_Save_path = os.path.join(home_path, file_name)
     df.to_excel(report_Save_path)
 
 

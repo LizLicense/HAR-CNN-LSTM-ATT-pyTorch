@@ -3,10 +3,33 @@ import torch
 import torch.nn as nn
 # from attention import TemporalAttn
 
-class Network(nn.Module):
+
+def get_network_class(network_name):
+    """Return the algorithm class with the given name."""
+    if network_name not in globals():
+        raise NotImplementedError("Algorithm not found: {}".format(network_name))
+    return globals()[network_name]
+
+
+class classifier(nn.Module):
+    def __init__(self):
+        super(classifier, self).__init__()
+        # print(hparams)
+        self.logits = nn.Linear(in_features=128*128, out_features=6)
+
+    def forward(self, x):
+        # print(x.shape)
+        x_flat = x.reshape(x.shape[0], -1)
+        predictions = self.logits(x_flat)
+        return predictions
+
+
+##########################################################################################
+
+class cnnNetwork(nn.Module):
     
     def __init__(self):
-        super(Network, self).__init__()
+        super(cnnNetwork, self).__init__()
         self.conv1 = nn.Sequential(
             nn.Conv1d(in_channels = 9, out_channels = 64, kernel_size=6, stride=1, padding=2),           
             nn.ReLU(),
@@ -52,3 +75,9 @@ class Network(nn.Module):
 
         return out
 
+class cnn1d_temporal(nn.Module):
+    def __init__(self):
+        super(cnn1d_temporal, self).__init__()
+
+    def forward(self, x):
+        return x
