@@ -1,7 +1,9 @@
 from itertools import accumulate
+import collections
 from data_loader import load_data
 import matplotlib.pyplot as plt
 from network import get_network_class
+import network as net
 import numpy as np
 import os
 import torch
@@ -59,52 +61,9 @@ def get_args():
     args = parser.parse_args()
     return args
 
-'''
-# Supervised_original:
-criterion = nn.CrossEntropyLoss()
-# start training
-loop nepoch:
-    model.train()
-    sample and label pass to device
-    get the output
-    get loss: criterion(output, label)
-    loss = criterion(output, label)
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-    total_loss += loss.item()
-    prediction: _, predicted = torch.max(output.data, 1) #_is the value, predicted is the value index
-    count total: total += label.size(0)
-    count correct prediction: correct += (predicted == label).sum()
-
-# training completed
-accuracy f1 rate:
-
-do testing: valid(model, test_loader)
-save result
-
-----------------------------------------------------
-
-SSL(stage 1)/FT(stage 2)/Supervised:
-# start training
-loop nepoch:
-    model.train()
-    for each step:
-        sample data pass to device
-        losses, model = algorithm.update(data) 
-            if ssl: training with auxiliary labels, return loss
-            if surpervised: training with true labels, return loss
-    if not SSL: 
-        do testing evaluate() # evaluate in each training
-        calculate f1, acc
-        save best model
-    if SSL:
-        save checkpoint
-training completion
-
-
-'''
-def train(network, optimizer, train_loader, test_loader, training_mode, backbone_fe, backbone_temporal):
+def train(network, optimizer, train_loader, test_loader, training_mode):
+    # Average meters
+    loss_avg_meters = collections.defaultdict(lambda: AverageMeter())
     if training_mode == "ft":
         # load saved models
         chekpoint = torch.load(os.path.join(data_folder,'checkpoint.pt'))
@@ -124,12 +83,13 @@ def train(network, optimizer, train_loader, test_loader, training_mode, backbone
 
             if training_mode == "ssl":
                 # data pass to update(), return model
-                losses, model = ssl_update(backbone_fe, backbone_temporal, optimizer, classifier, sample)
+                losses, model = ssl_update(net.cnnNetwork(), net.cnn1d_temporal(), optimizer, classifier, sample)
                 # cal metrics           
+                for key, val in losses.items():
+                    loss_avg_meters[key].update(val, args.batchsize)
             elif training_mode != "ssl" : # supervised training or fine tuining 
-                # to revise
-                # losses, model = surpervised_update(sample)
-                losses = surpervised_update(sample)
+
+                losses, model = surpervised_update(sample)
                 # cal metrics f1 acc rate
                 calc_results_per_run()
                 # total_loss = total_loss + losses
@@ -143,10 +103,11 @@ def train(network, optimizer, train_loader, test_loader, training_mode, backbone
                     cp_file = os.path.join(args.dataset, "_best_checkpoint.pt")
                     torch.save(save_path, cp_file)
                     save_results()
-                    
+            
+            losses = losses['Total_loss']   
+            print(losses)    
             total_loss = total_loss + losses
         print(f'Epoch: [{e}/{args.nepoch}], loss:{total_loss / len(train_loader):.4f}')
-        # print(f'Epoch: [{e}/{args.nepoch}], loss:{total_loss:.4f}')
     # save checkpoint
     print(training_mode)
     if training_mode == "ssl":       
@@ -163,7 +124,6 @@ def valid(model, test_loader, training_mode):
 
     with torch.no_grad():
         correct, total = 0, 0
-        
         for sample, label in test_loader:
             sample, label = sample.to(DEVICE, dtype=torch.float32).float(), label.to(DEVICE).long()
             
@@ -202,15 +162,14 @@ def ssl_update(backbone_fe, backbone_temporal, optimizer,classifier, samples):
     # self.feature_extractor = backbone_fe
     # self.temporal_encoder = backbone_temporal
     # ====== Data =====================
+
     data = samples["transformed_samples"].float()
     labels = samples["aux_labels"].long()
-    
-    optimizer.zero_grad()
 
+    optimizer.zero_grad()
     features = backbone_fe(data)
-    print("f1",features)
-    features = features.flatten(1, 2)
-    print("f2",features )
+
+    features = features.flatten(1,2)
     logits = classifier(features)
 
     # Cross-Entropy loss
@@ -224,31 +183,29 @@ def ssl_update(backbone_fe, backbone_temporal, optimizer,classifier, samples):
             [backbone_fe, backbone_temporal, classifier]
 
 # to revise
-def surpervised_update(samples):
-    '''
-        # ====== Data =====================
-        data = samples['sample_ori'].float()
-        labels = samples['class_labels'].long()
+def surpervised_update(backbone_fe, backbone_temporal, optimizer,classifier, samples):
+    # self.feature_extractor = backbone_fe
+    # self.temporal_encoder = backbone_temporal
+    # ====== Data =====================
 
-        # ====== Source =====================
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay= args.weight_decay)
-        optimizer.zero_grad()
+    data = samples['sample_ori'].float()
+    labels = samples['class_labels'].long()
 
-        # Src original features
-        # features = feature_extractor(data)
-        # features = temporal_encoder(features)
-        # logits = classifier(features)
-        features = model(data)
-        # Cross-Entropy loss
-        x_ent_loss = criterion(features, labels)
+    optimizer.zero_grad()
+    features = backbone_fe(data)
+    features = backbone_temporal(features)
+    logits = classifier(features)
 
-        x_ent_loss.backward()
-        optimizer.step()
+    # Cross-Entropy loss
+    loss = criterion(logits, labels)
+    
+    loss.backward()
+    optimizer.step()
+    
+    # return loss.item()
+    return {'Total_loss': loss.item()}, \
+            [backbone_fe, backbone_temporal, classifier]
 
-        return x_ent_loss.item()
-        # return {'Total_loss': x_ent_loss.item()}, \
-        #        [feature_extractor, temporal_encoder, classifier]
-'''
 def calc_results_per_run(self):
         self.acc, self.f1 = _calc_metrics(self.pred_labels, self.true_labels, self.dataset_configs.class_names)
 
@@ -313,28 +270,24 @@ if __name__ == '__main__':
     #     args.data_folder, batch_size=args.batchsize, training_mode=args.training_mode)
     train_loader, test_loader = load_data(args.data_folder, args.training_mode, 
                                 augmentation=args.augmentation, oversample=args.oversample)
-    #load model
-    # model = net.Network().to(DEVICE)
-    # optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay= args.weight_decay)
 
     num_clsTran_tasks = len(args.augmentation.split("_"))
     # get Network
-    backbone_fe = get_network_class(f"cnnNetwork")
-    print(backbone_fe)
-    backbone_temporal = get_network_class(f"cnn1d_temporal")
-    print(backbone_temporal)
-    classifier = get_network_class("classifier")
-    print(classifier)
+    # backbone_fe = get_network_class(f"cnnNetwork")
+    # backbone_temporal = get_network_class(f"cnn1d_temporal")
+    # print(backbone_temporal)
+    # classifier = get_network_class("classifier")
+    # print(classifier)
 
     # in_features 
-    classifier = nn.Linear(in_features=128*128, out_features=num_clsTran_tasks)
-    network = nn.Sequential(backbone_fe, backbone_temporal, classifier)
+    classifier = net.classifier()
+    # load model
+    network = nn.Sequential(net.cnnNetwork(), net.cnn1d_temporal(), classifier)
     # network = network.to(DEVICE)
     optimizer = optim.Adam(network.parameters(), lr=args.lr, weight_decay= args.weight_decay, betas=(0.9, 0.99))
 
-
     # Train model
-    train(network, optimizer, train_loader, test_loader, args.training_mode, backbone_fe, backbone_temporal)
+    train(network, optimizer, train_loader, test_loader, args.training_mode)
 
     # result = np.array(result, dtype=float)
     # np.savetxt(testAcc_csv, result, fmt='%.2f', delimiter=',')

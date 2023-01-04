@@ -15,7 +15,7 @@ class classifier(nn.Module):
     def __init__(self):
         super(classifier, self).__init__()
         # print(hparams)
-        self.logits = nn.Linear(in_features=128*128, out_features=6)
+        self.logits = nn.Linear(in_features=64*64, out_features=6)
 
     def forward(self, x):
         # print(x.shape)
@@ -26,8 +26,7 @@ class classifier(nn.Module):
 
 ##########################################################################################
 
-class cnnNetwork(nn.Module):
-    
+class cnnNetwork(nn.Module):  
     def __init__(self):
         super(cnnNetwork, self).__init__()
         self.conv1 = nn.Sequential(
@@ -59,16 +58,16 @@ class cnnNetwork(nn.Module):
         #print("c1", out.dtype, out.shape)
         out = self.conv2(out)
         #print("c2", out.dtype, out.shape)
-        out = self.dropout(out)
+        # out = self.dropout(out)
         #print("dropout", out.shape, out.dtype)
-        out, hidden = self.lstm(out)
-        out = self.tanh(out)
+        # out, hidden = self.lstm(out)
+        # out = self.tanh(out)
         #print("lstm", out.dtype, out.shape)
         #attention
         # out, weights=self.attn(out)
-        out = self.flatten(out)
+        # out = self.flatten(out)
         #print("flatten", out.dtype, out.shape)
-        out = self.fc(out)
+        # out = self.fc(out)
         #print("fc", out.dtype, out.shape)
         # out = self.softmax(out)
         #print("sm", out.dtype, out.shape)
