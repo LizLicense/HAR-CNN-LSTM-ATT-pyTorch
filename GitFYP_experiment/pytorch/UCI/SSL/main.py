@@ -23,13 +23,13 @@ DEVICE = torch.device('cpu')
 
 
 data_folder = '../datapt/'
-save_dict = '../checkpoint_load/'
-save_path = '../checkpoint_saved/'
+save_dict = './checkpoint_load/'
+save_path = './checkpoint_saved/'
 result = []
 f1_result = []
 classes = ['WALKING', 'WALKING_UPSTAIRS',  'WALKING_DOWNSTAIRS','SITTING', 'STANDING', 'LAYING']
+result_path='./result/'
 
-result_path='/Users/lizliao/Downloads/GitFYP_experiment/wip:tut:CNN-LSTM-ATT-torch/result/UCI/'
 testAcc_csv=result_path+'result_cnn-lstm_UCI.csv'
 f1_csv=result_path+'result_f1_cnn-lstm_UCI.csv'
 confusion_img=result_path+'confusion matrix_cnn-lstm_UCI.png'
@@ -39,17 +39,16 @@ criterion = nn.CrossEntropyLoss()
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--nepoch', type=int, default=2) #50
+    parser.add_argument('--nepoch', type=int, default=50) #50
     parser.add_argument('--batchsize', type=int, default=64) #128 64
     parser.add_argument('--lr', type=float, default=0.001) #0.0003
     parser.add_argument('--weight_decay', type=float, default=0.0001)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--data_folder', type=str, default='../datapt/')
-    # parser.add_argument('--data_folder', type=str, default=data_folder)
     parser.add_argument('--seed', type=int, default=10)
 
     parser.add_argument('--dataset', type=str, default='UCI', help='HAPT OR HHAR')
-    parser.add_argument('--training_mode', type=str, default='ssl', 
+    parser.add_argument('--training_mode', type=str, default='ft', 
                     help='Modes of choice: supervised, ssl, ft')
     parser.add_argument('--augmentation', type=str, default='noise_permute',    
                     help='permute_timeShift_scale_noise')
@@ -61,58 +60,62 @@ def get_args():
     args = parser.parse_args()
     return args
 
-def train(network, optimizer, train_loader, test_loader, training_mode):
+def train(train_loader, test_loader, training_mode):
+    # get Network
+    backbone_fe = net.cnnNetwork()
+    backbone_temporal = net.cnn1d_temporal()
+    # print(backbone_temporal)
+    classifier = net.classifier()
+    # print(classifier)
+    
     # Average meters
     loss_avg_meters = collections.defaultdict(lambda: AverageMeter())
     if training_mode == "ft":
         # load saved models
-        chekpoint = torch.load(os.path.join(data_folder,'checkpoint.pt'))
-        # model=chekpoint
-
+        chekpoint = torch.load(os.path.join(save_dict,'UCI_SSL_checkpoint.pt'))
+        # backbone_fe.load_state_dict(chekpoint["fe"])
+        backbone_fe.load_state_dict(chekpoint["fe"])
+        print(backbone_fe.load_state_dict(chekpoint["fe"]))
     #training
     for e in range(args.nepoch):
-        # model.train()
         correct, total_loss = 0, 0
         best_f1 = 0
         best_acc = 0
         for sample in train_loader:
-            # print(type(sample))
             #send data to device
             sample=to_device(sample, args.device)
             # sample = sample.to(DEVICE, dtype=torch.float32).float()
 
             if training_mode == "ssl":
                 # data pass to update(), return model
-                losses, model = ssl_update(net.cnnNetwork(), net.cnn1d_temporal(), optimizer, classifier, sample)
+                losses, model = ssl_update(net.cnnNetwork(), net.cnn1d_temporal(), classifier, sample)
                 # cal metrics           
                 for key, val in losses.items():
                     loss_avg_meters[key].update(val, args.batchsize)
+            
             elif training_mode != "ssl" : # supervised training or fine tuining 
-
-                losses, model = surpervised_update(sample)
+                losses, model = surpervised_update(backbone_fe, net.cnn1d_temporal(), classifier, sample)
                 # cal metrics f1 acc rate
-                calc_results_per_run()
-                # total_loss = total_loss + losses
+                
                 # testing
-                valid(model, test_loader)
+                acc_test, f1,y_pred, y_true=valid(model, test_loader)
+                calc_results_per_run(y_pred, y_true)
+                
                 # save best model 
-                #model saved
                 if f1 > best_f1:  # save best model based on best f1.
                     best_f1 = f1
-                    best_acc = acc
+                    best_acc = acc_test
                     cp_file = os.path.join(args.dataset, "_best_checkpoint.pt")
                     torch.save(save_path, cp_file)
-                    save_results()
+                    save_results(best_acc,best_f1)
             
-            losses = losses['Total_loss']   
-            print(losses)    
+            losses = losses['Total_loss']      
             total_loss = total_loss + losses
         print(f'Epoch: [{e}/{args.nepoch}], loss:{total_loss / len(train_loader):.4f}')
     # save checkpoint
-    print(training_mode)
     if training_mode == "ssl":       
-        torch.save(model, "test.pt")
-        # save_checkpoint(save_path,model, args.dataset)
+        # torch.save(model, "UCIssl.pt")
+        save_checkpoint(save_path, model, args.dataset)
 
 def valid(model, test_loader, training_mode):
 
@@ -156,11 +159,14 @@ def valid(model, test_loader, training_mode):
     f1_result_np = np.array(f1_result, dtype=float)
     np.savetxt(f1_csv, f1_result_np, fmt='%.4f', delimiter=',')
     print("f1: ", np.average(f1))
-    return acc_test
+    return acc_test, f1, y_pred, y_true
 
-def ssl_update(backbone_fe, backbone_temporal, optimizer,classifier, samples):
+# surpervised_update(backbone_fe, net.cnnNetwork(), net.cnn1d_temporal(), optimizer, classifier, sample)
+def ssl_update( backbone_fe, backbone_temporal,classifier, samples):
     # self.feature_extractor = backbone_fe
     # self.temporal_encoder = backbone_temporal
+    network = nn.Sequential(backbone_fe, backbone_temporal, classifier)
+    optimizer = optim.Adam(network.parameters(), lr=args.lr, weight_decay= args.weight_decay, betas=(0.9, 0.99))
     # ====== Data =====================
 
     data = samples["transformed_samples"].float()
@@ -183,10 +189,12 @@ def ssl_update(backbone_fe, backbone_temporal, optimizer,classifier, samples):
             [backbone_fe, backbone_temporal, classifier]
 
 # to revise
-def surpervised_update(backbone_fe, backbone_temporal, optimizer,classifier, samples):
+def surpervised_update(backbone_fe, backbone_temporal, classifier, samples):
     # self.feature_extractor = backbone_fe
     # self.temporal_encoder = backbone_temporal
     # ====== Data =====================
+    network = nn.Sequential(backbone_fe, backbone_temporal, classifier)
+    optimizer = optim.Adam(network.parameters(), lr=args.lr, weight_decay= args.weight_decay, betas=(0.9, 0.99))
 
     data = samples['sample_ori'].float()
     labels = samples['class_labels'].long()
@@ -206,19 +214,21 @@ def surpervised_update(backbone_fe, backbone_temporal, optimizer,classifier, sam
     return {'Total_loss': loss.item()}, \
             [backbone_fe, backbone_temporal, classifier]
 
-def calc_results_per_run(self):
-        self.acc, self.f1 = _calc_metrics(self.pred_labels, self.true_labels, self.dataset_configs.class_names)
+def calc_results_per_run(pred_labels, true_labels):
+        acc, f1 = _calc_metrics(pred_labels, true_labels, classes)
+        return acc, f1
 
-def save_results(self):
-        run_metrics = {'accuracy': self.best_acc, 'f1_score': self.best_f1}
-        df = pd.DataFrame(columns=["acc", "f1"])
-        df.loc[0] = [self.acc, self.f1]
+def save_results(best_acc, best_f1):
+    metrics = {'accuracy': [], 'f1_score': []}
+    run_metrics = {'accuracy': best_acc, 'f1_score': best_f1}
+    df = pd.DataFrame(columns=["acc", "f1"])
+    df.loc[0] = [best_acc, best_f1]
 
-        for (key, val) in run_metrics.items(): self.metrics[key].append(val)
+    for (key, val) in run_metrics.items(): metrics[key].append(val)
 
-        scores_save_path = os.path.join(self.home_path, self.scenario_log_dir, "scores.xlsx")
-        df.to_excel(scores_save_path, index=False)
-        self.results_df = df
+    scores_save_path = os.path.join(result_path, "scores.xlsx")
+    df.to_excel(scores_save_path, index=False)
+    # results_df = df
 
 def plot():
     data = np.loadtxt(testAcc_csv, delimiter=',')
@@ -266,28 +276,21 @@ if __name__ == '__main__':
     args = get_args()
     print(args.training_mode)
     torch.manual_seed(args.seed)
-    # train_loader, test_loader = data_preprocess.load(
-    #     args.data_folder, batch_size=args.batchsize, training_mode=args.training_mode)
     train_loader, test_loader = load_data(args.data_folder, args.training_mode, 
                                 augmentation=args.augmentation, oversample=args.oversample)
 
     num_clsTran_tasks = len(args.augmentation.split("_"))
-    # get Network
-    # backbone_fe = get_network_class(f"cnnNetwork")
-    # backbone_temporal = get_network_class(f"cnn1d_temporal")
-    # print(backbone_temporal)
-    # classifier = get_network_class("classifier")
-    # print(classifier)
+
 
     # in_features 
-    classifier = net.classifier()
+    
     # load model
-    network = nn.Sequential(net.cnnNetwork(), net.cnn1d_temporal(), classifier)
+    # network = nn.Sequential(net.cnnNetwork(), net.cnn1d_temporal(), classifier)
     # network = network.to(DEVICE)
-    optimizer = optim.Adam(network.parameters(), lr=args.lr, weight_decay= args.weight_decay, betas=(0.9, 0.99))
+    # optimizer = optim.Adam(network.parameters(), lr=args.lr, weight_decay= args.weight_decay, betas=(0.9, 0.99))
 
     # Train model
-    train(network, optimizer, train_loader, test_loader, args.training_mode)
+    train(train_loader, test_loader, args.training_mode)
 
     # result = np.array(result, dtype=float)
     # np.savetxt(testAcc_csv, result, fmt='%.2f', delimiter=',')
