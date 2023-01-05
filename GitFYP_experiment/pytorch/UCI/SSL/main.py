@@ -25,6 +25,7 @@ DEVICE = torch.device('cpu')
 data_folder = '../datapt/'
 save_dict = './checkpoint_load/'
 save_path = './checkpoint_saved/'
+best_cp = './checkpoint_best/'
 result = []
 f1_result = []
 classes = ['WALKING', 'WALKING_UPSTAIRS',  'WALKING_DOWNSTAIRS','SITTING', 'STANDING', 'LAYING']
@@ -75,7 +76,11 @@ def train(train_loader, test_loader, training_mode):
         chekpoint = torch.load(os.path.join(save_dict,'UCI_SSL_checkpoint.pt'))
         # backbone_fe.load_state_dict(chekpoint["fe"])
         backbone_fe.load_state_dict(chekpoint["fe"])
-        print(backbone_fe.load_state_dict(chekpoint["fe"]))
+        # print(backbone_fe.load_state_dict(chekpoint["fe"]))
+    
+    elif training_mode not in ["ssl", "supervised"]:
+        print("Traiinng mode not found!")
+    
     #training
     for e in range(args.nepoch):
         correct, total_loss = 0, 0
@@ -98,69 +103,66 @@ def train(train_loader, test_loader, training_mode):
                 # cal metrics f1 acc rate
                 
                 # testing
-                acc_test, f1,y_pred, y_true=valid(model, test_loader)
-                calc_results_per_run(y_pred, y_true)
+                y_pred, y_true=valid( test_loader, net.cnnNetwork(), net.cnn1d_temporal(), classifier,)
+                acc_test, f1 = calc_results_per_run(y_pred, y_true)
                 
                 # save best model 
                 if f1 > best_f1:  # save best model based on best f1.
                     best_f1 = f1
                     best_acc = acc_test
-                    cp_file = os.path.join(args.dataset, "_best_checkpoint.pt")
-                    torch.save(save_path, cp_file)
+                    save_checkpoint(best_cp, model, args.dataset)
                     save_results(best_acc,best_f1)
+                    _save_metrics(y_pred, y_true, result_path, classes)
+
             
             losses = losses['Total_loss']      
             total_loss = total_loss + losses
         print(f'Epoch: [{e}/{args.nepoch}], loss:{total_loss / len(train_loader):.4f}')
+        for key, val in loss_avg_meters.items():
+                print(f'{key}\t: {val.avg:2.4f}')
+                if training_mode != "ssl":
+                    print(f'Acc:{acc_test:2.4f} \t F1:{f1:2.4f} (best: {best_f1:2.4f})')
     # save checkpoint
     if training_mode == "ssl":       
         # torch.save(model, "UCIssl.pt")
         save_checkpoint(save_path, model, args.dataset)
 
-def valid(model, test_loader, training_mode):
+def valid(test_loader, feature_extractor, temporal_encoder, classifier):
 
-    model.eval()
-    
-    y_pred = []
-    y_true = []
-    f1 = []
+    # model.eval()
+    feature_extractor.eval()
+    temporal_encoder.eval()
+    classifier.eval()
+
+    total_loss_ = []
+    y_pred = np.array([])
+    y_true = np.array([])
+
 
     with torch.no_grad():
         correct, total = 0, 0
-        for sample, label in test_loader:
-            sample, label = sample.to(DEVICE, dtype=torch.float32).float(), label.to(DEVICE).long()
+        for data in test_loader:
+            data_samples = to_device(data, args.device)
+            data = data_samples['sample_ori'].float()
+            labels = data_samples['class_labels'].long()
             
-            if training_mode == "ssl":
-                pass
-            else:
-                output = model(sample)
-            _, predicted = torch.max(output.data, 1)
-            
-            y_pred.extend(predicted)
-            y_true.extend(label)
-            f1.extend(f1)
-            
-            total += label.size(0)
-            correct += (predicted == label).sum()
-    acc_test = float(correct) * 100 / total
-    
-    # save metrics
-    _save_metrics(y_pred, y_true, save_path)
-    # to revise
-    # Build confusion matrix
-    cf_matrix = confusion_matrix(y_true, y_pred)
-    df_cm = pd.DataFrame(cf_matrix/np.sum(cf_matrix) *10, index = [i for i in classes],
-                        columns = [i for i in classes])
-    plt.figure(figsize = (12,7))
-    sn.heatmap(df_cm, annot=True)
-    plt.savefig(confusion_img)    
-    f1 = f1_score(y_true, y_pred, average=None)# F1 Score = 2* Precision Score * Recall Score/ (Precision Score + Recall Score/)
-    f1_result.append(f1)
-    f1_result_np = np.array(f1_result, dtype=float)
-    np.savetxt(f1_csv, f1_result_np, fmt='%.4f', delimiter=',')
-    print("f1: ", np.average(f1))
-    return acc_test, f1, y_pred, y_true
+            # forward pass
+            features = feature_extractor(data)
+            features = temporal_encoder(features)
+            predictions = classifier(features)
 
+            # compute loss
+            loss = F.cross_entropy(predictions, labels)
+            total_loss_.append(loss.item())
+            pred = predictions.detach().argmax(dim=1)  # get the index of the max log-probability
+
+            y_pred = np.append(y_pred, pred.cpu().numpy())
+            y_true = np.append(y_true, labels.data.cpu().numpy())
+
+        trg_loss = torch.tensor(total_loss_).mean()  # average loss
+    
+    return  y_pred, y_true
+   
 # surpervised_update(backbone_fe, net.cnnNetwork(), net.cnn1d_temporal(), optimizer, classifier, sample)
 def ssl_update( backbone_fe, backbone_temporal,classifier, samples):
     # self.feature_extractor = backbone_fe
