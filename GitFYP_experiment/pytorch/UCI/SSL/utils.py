@@ -62,33 +62,25 @@ def _logger(logger_name, level=logging.DEBUG):
     return logger
 
 
-def starting_logs(data_type, ssl_method, sleep_model, train_mode, exp_log_dir, fold_id):
-    log_dir = os.path.join(exp_log_dir, "_fold_" + str(fold_id), train_mode)
+def starting_logs(dataset, train_mode, exp_log_dir):
+    log_dir = os.path.join(exp_log_dir, train_mode)
     os.makedirs(log_dir, exist_ok=True)
     log_file_name = os.path.join(log_dir, f"logs_{datetime.now().strftime('%d_%m_%Y_%H_%M_%S')}.log")
     logger = _logger(log_file_name)
+    logger.debug(f'Dataset: {dataset}, Training mode: {train_mode}')
     logger.debug("=" * 45)
-    logger.debug(f'Dataset: {data_type}')
-    logger.debug(f'Method:  {ssl_method}')
-    logger.debug(f'Model:  {sleep_model}')
-    logger.debug("=" * 45)
-    logger.debug(f'Fold ID: {fold_id}')
-    logger.debug("=" * 45)
-    return logger, log_dir
+    return logger
 
 
 def save_checkpoint(home_path, model, dataset):
     save_dict = {
         "dataset": dataset,
-        # "configs": dataset_configs.__dict__,
-        # "hparams": dict(hparams),
         "fe": model[0].state_dict(),
         "te": model[1].state_dict(),
         "clf": model[2].state_dict()
     }
     # save classification report
-    save_path = os.path.join(home_path, dataset, "checkpoint.pt")
-
+    save_path = os.path.join(home_path, dataset, "UCI_checkpoint.pt")
     torch.save(save_dict, save_path)
 
 
@@ -98,16 +90,17 @@ def _calc_metrics(pred_labels, true_labels, classes_names):
 
     r = classification_report(true_labels, pred_labels, target_names=classes_names, digits=6, output_dict=True)
     accuracy = accuracy_score(true_labels, pred_labels)
-
+    
+    # return acc, f1
     return accuracy * 100, r["macro avg"]["f1-score"] * 100
 
 
-def _save_metrics(pred_labels, true_labels, home_path):
+def _save_metrics(pred_labels, true_labels, home_path, classes_names):
     pred_labels = np.array(pred_labels).astype(int)
     true_labels = np.array(true_labels).astype(int)
 
     # r = classification_report(true_labels, pred_labels, target_names=classes_names, digits=6, output_dict=True)
-    r = classification_report(true_labels, pred_labels, digits=6, output_dict=True)
+    r = classification_report(true_labels, pred_labels, target_names=classes_names, digits=6, output_dict=True)
 
     df = pd.DataFrame(r)
     accuracy = accuracy_score(true_labels, pred_labels)
@@ -125,7 +118,7 @@ import collections
 
 def to_device(input, device):
     if torch.is_tensor(input):
-        return input.to(device=device)
+        return input.to(device=device, dtype=torch.float)
     elif isinstance(input, str):
         return input
     elif isinstance(input, collections.Mapping):

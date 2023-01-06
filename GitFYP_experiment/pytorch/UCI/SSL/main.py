@@ -2,7 +2,6 @@ from itertools import accumulate
 import collections
 from data_loader import load_data
 import matplotlib.pyplot as plt
-from network import get_network_class
 import network as net
 import numpy as np
 import os
@@ -16,11 +15,6 @@ import seaborn as sn
 import pandas as pd
 import torch.nn.functional as F
 from utils import AverageMeter, to_device, _save_metrics, copy_Files, starting_logs, save_checkpoint, _calc_metrics
-
-DEVICE = torch.device('cpu')
-# cpu = torch.device('cpu')
-# DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
-
 
 data_folder = '../datapt/'
 save_dict = './checkpoint_load/'
@@ -38,18 +32,21 @@ plot_img=result_path+'plot_cnn-lstm_UCI.png'
 
 criterion = nn.CrossEntropyLoss()
 
+
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--nepoch', type=int, default=50) #50
+    # ===================parameters===========================
+    parser.add_argument('--nepoch', type=int, default=20) #50
     parser.add_argument('--batchsize', type=int, default=64) #128 64
     parser.add_argument('--lr', type=float, default=0.001) #0.0003
-    parser.add_argument('--weight_decay', type=float, default=0.0001)
+    parser.add_argument('--weight_decay', type=float, default=0)
     parser.add_argument('--momentum', type=float, default=0.9)
-    parser.add_argument('--data_folder', type=str, default='../datapt/')
+    parser.add_argument('--betas', type=float, default=(0.9, 0.999))
     parser.add_argument('--seed', type=int, default=10)
-
+    # ===================settings===========================
+    parser.add_argument('--data_folder', type=str, default='../datapt/')
     parser.add_argument('--dataset', type=str, default='UCI', help='HAPT OR HHAR')
-    parser.add_argument('--training_mode', type=str, default='ft', 
+    parser.add_argument('--training_mode', type=str, default='supervised', 
                     help='Modes of choice: supervised, ssl, ft')
     parser.add_argument('--augmentation', type=str, default='noise_permute',    
                     help='permute_timeShift_scale_noise')
@@ -62,6 +59,9 @@ def get_args():
     return args
 
 def train(train_loader, test_loader, training_mode):
+    #logger
+    logger = starting_logs(args.dataset, training_mode, result_path)
+
     # get Network
     backbone_fe = net.cnnNetwork()
     backbone_temporal = net.cnn1d_temporal()
@@ -97,10 +97,14 @@ def train(train_loader, test_loader, training_mode):
                 # cal metrics           
                 for key, val in losses.items():
                     loss_avg_meters[key].update(val, args.batchsize)
+                
             
             elif training_mode != "ssl" : # supervised training or fine tuining 
                 losses, model = surpervised_update(backbone_fe, net.cnn1d_temporal(), classifier, sample)
                 # cal metrics f1 acc rate
+                for key, val in losses.items():
+                    loss_avg_meters[key].update(val, args.batchsize)
+                
                 
                 # testing
                 y_pred, y_true=valid( test_loader, net.cnnNetwork(), net.cnn1d_temporal(), classifier,)
@@ -117,11 +121,20 @@ def train(train_loader, test_loader, training_mode):
             
             losses = losses['Total_loss']      
             total_loss = total_loss + losses
-        print(f'Epoch: [{e}/{args.nepoch}], loss:{total_loss / len(train_loader):.4f}')
+           
+        # logging
+        logger.debug(f'[Epoch : {e}/{args.nepoch}]')
         for key, val in loss_avg_meters.items():
-                print(f'{key}\t: {val.avg:2.4f}')
-                if training_mode != "ssl":
-                    print(f'Acc:{acc_test:2.4f} \t F1:{f1:2.4f} (best: {best_f1:2.4f})')
+            logger.debug(f'{key}\t: {val.avg:2.4f}')
+            if training_mode != "ssl":
+                logger.debug(f'Acc:{acc_test:2.4f} \t F1:{f1:2.4f} (best: {best_f1:2.4f})')
+        logger.debug(f'-------------------------------------')
+    
+        # print(f'Epoch: [{e}/{args.nepoch}], loss:{total_loss / len(train_loader):.4f}')
+        print(f'Epoch: [{e}/{args.nepoch}]\t loss:{total_loss:.4f}')
+        if training_mode != "ssl":
+            print(f'Acc:{acc_test:2.4f} \t F1:{f1:2.4f} (best: {best_f1:2.4f})')
+        # print("loss avg: ", loss_avg_meters[key],loss_avg_meters[val]) 
     # save checkpoint
     if training_mode == "ssl":       
         # torch.save(model, "UCIssl.pt")
@@ -156,8 +169,8 @@ def valid(test_loader, feature_extractor, temporal_encoder, classifier):
             total_loss_.append(loss.item())
             pred = predictions.detach().argmax(dim=1)  # get the index of the max log-probability
 
-            y_pred = np.append(y_pred, pred.cpu().numpy())
-            y_true = np.append(y_true, labels.data.cpu().numpy())
+            y_pred = np.append(y_pred, pred.cpu().numpy().tolist())
+            y_true = np.append(y_true, labels.data.cpu().numpy().tolist())
 
         trg_loss = torch.tensor(total_loss_).mean()  # average loss
     
@@ -196,7 +209,7 @@ def surpervised_update(backbone_fe, backbone_temporal, classifier, samples):
     # self.temporal_encoder = backbone_temporal
     # ====== Data =====================
     network = nn.Sequential(backbone_fe, backbone_temporal, classifier)
-    optimizer = optim.Adam(network.parameters(), lr=args.lr, weight_decay= args.weight_decay, betas=(0.9, 0.99))
+    optimizer = optim.Adam(network.parameters(), lr=args.lr, weight_decay= args.weight_decay, betas=args.betas)
 
     data = samples['sample_ori'].float()
     labels = samples['class_labels'].long()
@@ -231,6 +244,11 @@ def save_results(best_acc, best_f1):
     scores_save_path = os.path.join(result_path, "scores.xlsx")
     df.to_excel(scores_save_path, index=False)
     # results_df = df
+
+def create_folder(folder_name,train_mode)
+
+    log_dir = os.path.join(".", train_mode, folder_name)
+    os.makedirs(log_dir, exist_ok=True)
 
 def plot():
     data = np.loadtxt(testAcc_csv, delimiter=',')
@@ -272,8 +290,6 @@ def avg_F1_Acc():
     testAvg = mean_trans.loc["average", "test_acc"]
     print(f"train acc avg: {trainAvg:.2f}, test acc avg: {testAvg:.2f}")
 
-# data_folder = '../datapt/'
-# load_data(data_folder, "ssl","permute_timeShift_scale_noise", False)
 if __name__ == '__main__':
     args = get_args()
     print(args.training_mode)
@@ -282,14 +298,6 @@ if __name__ == '__main__':
                                 augmentation=args.augmentation, oversample=args.oversample)
 
     num_clsTran_tasks = len(args.augmentation.split("_"))
-
-
-    # in_features 
-    
-    # load model
-    # network = nn.Sequential(net.cnnNetwork(), net.cnn1d_temporal(), classifier)
-    # network = network.to(DEVICE)
-    # optimizer = optim.Adam(network.parameters(), lr=args.lr, weight_decay= args.weight_decay, betas=(0.9, 0.99))
 
     # Train model
     train(train_loader, test_loader, args.training_mode)

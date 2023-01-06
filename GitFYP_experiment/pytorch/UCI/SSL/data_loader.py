@@ -67,7 +67,6 @@ class data_loader(Dataset):
             
         # else include ft and surpervised
         else:
-            print("supervised")
             sample = {
                 'sample_ori': self.x_data[index].squeeze(-1),
                 'class_labels': int(self.y_data[index])
