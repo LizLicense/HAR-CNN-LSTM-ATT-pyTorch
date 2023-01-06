@@ -83,7 +83,7 @@ def train(train_loader, test_loader, training_mode):
     
     #training
     for e in range(args.nepoch):
-         total_loss = 0, 0
+        total_loss = 0, 0
         best_f1 = 0
         best_acc = 0
         for sample in train_loader:
@@ -118,8 +118,8 @@ def train(train_loader, test_loader, training_mode):
                     _save_metrics(y_pred, y_true, result_path, classes)
 
             
-            losses = losses['Total_loss']      
-            total_loss = total_loss + losses
+           # losses = losses['Total_loss']      
+           # total_loss = total_loss + losses
            
         # logging
         logger.debug(f'printf[Epoch : {e}/{args.nepoch}]')
