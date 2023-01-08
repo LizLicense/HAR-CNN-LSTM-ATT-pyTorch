@@ -10,8 +10,8 @@ def get_network_class(network_name):
         raise NotImplementedError("Algorithm not found: {}".format(network_name))
     return globals()[network_name]
 
-
-class classifier(nn.Module):
+# prediction
+class classifier(nn.Module): 
     def __init__(self):
         super(classifier, self).__init__()
         # print(hparams)
@@ -74,6 +74,7 @@ class cnnNetwork(nn.Module):
 
         return out
 
+# can try LSTM
 class cnn1d_temporal(nn.Module):
     def __init__(self):
         super(cnn1d_temporal, self).__init__()

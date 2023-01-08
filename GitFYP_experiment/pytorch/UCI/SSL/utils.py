@@ -80,7 +80,7 @@ def save_checkpoint(home_path, model, dataset):
         "clf": model[2].state_dict()
     }
     # save classification report
-    save_path = os.path.join(home_path, dataset, "UCI_checkpoint.pt")
+    save_path = os.path.join(home_path, dataset, "UCI_SSL_checkpoint.pt")
     torch.save(save_dict, save_path)
 
 

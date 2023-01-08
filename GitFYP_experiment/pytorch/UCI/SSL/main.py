@@ -36,7 +36,7 @@ criterion = nn.CrossEntropyLoss()
 def get_args():
     parser = argparse.ArgumentParser()
     # ===================parameters===========================
-    parser.add_argument('--nepoch', type=int, default=20) #50
+    parser.add_argument('--nepoch', type=int, default=30) #50
     parser.add_argument('--batchsize', type=int, default=64) #128 64
     parser.add_argument('--lr', type=float, default=0.001) #0.0003
     parser.add_argument('--weight_decay', type=float, default=0.0001)
@@ -46,10 +46,10 @@ def get_args():
     # ===================settings===========================
     parser.add_argument('--data_folder', type=str, default='../datapt/')
     parser.add_argument('--dataset', type=str, default='UCI', help='HAPT OR HHAR')
-    parser.add_argument('--training_mode', type=str, default='supervised', 
+    parser.add_argument('--training_mode', type=str, default='ft', 
                     help='Modes of choice: supervised, ssl, ft')
     parser.add_argument('--augmentation', type=str, default='permute_timeShift_scale_noise',    
-                    help='permute_timeShift_scale_noise')
+                    help='negate_permute_timeShift_scale_noise')
     parser.add_argument('--device', type=str, default='mps',              
                     help='cpu or mps')
     parser.add_argument('--oversample', type=bool, default=False, 
@@ -62,25 +62,28 @@ def train(train_loader, test_loader, training_mode):
     #logger
     logger = starting_logs(args.dataset, training_mode, result_path)
 
-    # get Network
+    # get Network - ssl/supervised
     backbone_fe = net.cnnNetwork()
     backbone_temporal = net.cnn1d_temporal()
-    # print(backbone_temporal)
     classifier = net.classifier()
-    # print(classifier)
-    
+
     # Average meters
     loss_avg_meters = collections.defaultdict(lambda: AverageMeter())
+
     if training_mode == "ft":
         # load saved models
         chekpoint = torch.load(os.path.join(save_dict,'UCI_SSL_checkpoint.pt'))
         # backbone_fe.load_state_dict(chekpoint["fe"])
         backbone_fe.load_state_dict(chekpoint["fe"])
         # print(backbone_fe.load_state_dict(chekpoint["fe"]))
-    
+
     elif training_mode not in ["ssl", "supervised"]:
         print("Traiinng mode not found!")
-    
+
+
+    network = nn.Sequential(backbone_fe, backbone_temporal, classifier)
+    optimizer = optim.Adam(network.parameters(), lr=args.lr, weight_decay= args.weight_decay, betas=(0.9, 0.99))
+
     #training
     for e in range(args.nepoch):
         total_loss = 0, 0
@@ -92,14 +95,15 @@ def train(train_loader, test_loader, training_mode):
 
             if training_mode == "ssl":
                 # data pass to update(), return model
-                losses, model = ssl_update(net.cnnNetwork(), net.cnn1d_temporal(), classifier, sample)
+                losses, model = ssl_update(backbone_fe, backbone_temporal, classifier, sample, optimizer)
+                # losses, model = ssl_update(cnnNetwork, net.cnn1d_temporal(), classifier, sample, optimizer)
                 # cal metrics           
                 for key, val in losses.items():
                     loss_avg_meters[key].update(val, args.batchsize)
                 
             
             elif training_mode != "ssl" : # supervised training or fine tuining 
-                losses, model = surpervised_update(backbone_fe, net.cnn1d_temporal(), classifier, sample)
+                losses, model = surpervised_update(backbone_fe, backbone_temporal, classifier, sample, optimizer)
                 # cal metrics f1 acc rate
                 for key, val in losses.items():
                     loss_avg_meters[key].update(val, args.batchsize)
@@ -177,11 +181,12 @@ def valid(test_loader, feature_extractor, temporal_encoder, classifier):
     return  y_pred, y_true
    
 
-def ssl_update( backbone_fe, backbone_temporal,classifier, samples):
+def ssl_update(backbone_fe, backbone_temporal,classifier, samples, optimizer):
     # self.feature_extractor = backbone_fe
     # self.temporal_encoder = backbone_temporal
     network = nn.Sequential(backbone_fe, backbone_temporal, classifier)
-    optimizer = optim.Adam(network.parameters(), lr=args.lr, weight_decay= args.weight_decay, betas=(0.9, 0.99))
+    network.to(args.device)
+    # optimizer = optim.Adam(network.parameters(), lr=args.lr, weight_decay= args.weight_decay, betas=(0.9, 0.99))
     
     # ====== Data =====================
     data = samples["transformed_samples"].float()
@@ -204,14 +209,14 @@ def ssl_update( backbone_fe, backbone_temporal,classifier, samples):
             [backbone_fe, backbone_temporal, classifier]
 
 # to revise
-def surpervised_update(backbone_fe, backbone_temporal, classifier, samples):
+def surpervised_update(backbone_fe, backbone_temporal, classifier, samples, optimizer):
     # self.feature_extractor = backbone_fe
     # self.temporal_encoder = backbone_temporal
     
     # ====== Data =====================
     network = nn.Sequential(backbone_fe, backbone_temporal, classifier)
     network.to(args.device)
-    optimizer = optim.Adam(network.parameters(), lr=args.lr, weight_decay= args.weight_decay, betas=args.betas)
+    # optimizer = optim.Adam(network.parameters(), lr=args.lr, weight_decay= args.weight_decay, betas=args.betas)
 
     data = samples['sample_ori'].float()
     labels = samples['class_labels'].long()
@@ -230,6 +235,7 @@ def surpervised_update(backbone_fe, backbone_temporal, classifier, samples):
     # return loss.item()
     return {'Total_loss': loss.item()}, \
             [backbone_fe, backbone_temporal, classifier]
+
 
 def calc_results_per_run(pred_labels, true_labels):
         acc, f1 = _calc_metrics(pred_labels, true_labels, classes)
