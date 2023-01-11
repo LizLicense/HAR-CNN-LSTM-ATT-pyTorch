@@ -3,6 +3,7 @@ import random
 import os
 import sys
 import logging
+import collections
 import numpy as np
 import pandas as pd
 from shutil import copy
@@ -63,7 +64,7 @@ def _logger(logger_name, level=logging.DEBUG):
 
 
 def starting_logs(dataset, train_mode, exp_log_dir, data_percentage):
-    log_dir = os.path.join(exp_log_dir, train_mode)
+    log_dir = os.path.join(exp_log_dir, dataset, data_percentage, train_mode)
     os.makedirs(log_dir, exist_ok=True)
     log_file_name = os.path.join(log_dir, f"logs_{datetime.now().strftime('%d_%m_%Y_%H_%M_%S')}.log")
     logger = _logger(log_file_name)
@@ -71,16 +72,27 @@ def starting_logs(dataset, train_mode, exp_log_dir, data_percentage):
     logger.debug("=" * 45)
     return logger
 
+def create_folder(folder_name, dataset, data_percentage, training_mode): 
+    if training_mode==False: 
+        log_dir = os.path.join(".",folder_name, dataset, data_percentage)
+    else:
+        log_dir = os.path.join(".",folder_name, dataset, data_percentage,training_mode)
 
-def save_checkpoint(home_path, model, dataset, mode):
+    os.makedirs(log_dir, exist_ok=True)
+# create_folder('./result/', 'SSL', '75')
+def save_checkpoint(home_path, model, dataset, mode, data_percentage):
     save_dict = {
         "dataset": dataset,
         "fe": model[0].state_dict(),
         "te": model[1].state_dict(),
         "clf": model[2].state_dict()
     }
+    # create folder home_path: checkpoint_saved 
+    # def create_folder(folder_name, dataset, data_percentage): 
+    create_folder(home_path, dataset, data_percentage, training_mode=False)
+
     # save classification report
-    save_path = os.path.join(home_path, dataset, f"{mode}_checkpoint.pt")
+    save_path = os.path.join(home_path, dataset, data_percentage, f"{mode}_checkpoint.pt")
     torch.save(save_dict, save_path)
 
 
@@ -94,8 +106,10 @@ def _calc_metrics(pred_labels, true_labels, classes_names):
     # return acc, f1
     return accuracy * 100, r["macro avg"]["f1-score"] * 100
 
+                # _save_metrics(y_pred, y_true, args.result_path, args.dataset, args.data_percentage,
+                #               args.training_mode, classes)
 
-def _save_metrics(pred_labels, true_labels, home_path, training_mode, classes_names):
+def _save_metrics(pred_labels, true_labels, home_path, dataset, data_percentage, training_mode, classes_names):
     pred_labels = np.array(pred_labels).astype(int)
     true_labels = np.array(true_labels).astype(int)
 
@@ -107,13 +121,14 @@ def _save_metrics(pred_labels, true_labels, home_path, training_mode, classes_na
     df["accuracy"] = accuracy
     df = df * 100
 
+    # create folder
+    # def create_folder(folder_name, dataset, data_percentage): 
+    create_folder(home_path, dataset, data_percentage, training_mode)
+
     # save classification report
     file_name = "classification_report.xlsx"
-    report_Save_path = os.path.join(home_path, training_mode, file_name)
+    report_Save_path = os.path.join(home_path, dataset, data_percentage, training_mode, file_name)
     df.to_excel(report_Save_path)
-
-
-import collections
 
 
 def to_device(input, device):
@@ -142,7 +157,6 @@ def copy_Files(destination):
     copy(f"configs/hparams.py", os.path.join(destination_dir, f"hparams.py"))
     copy(f"trainer.py", os.path.join(destination_dir, f"trainer.py"))
     copy("utils.py", os.path.join(destination_dir, "utils.py"))
-
 
 
 # This is for parsing the X data, you can ignore it if you do not need preprocessing
