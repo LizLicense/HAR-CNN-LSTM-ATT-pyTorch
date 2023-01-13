@@ -1,14 +1,6 @@
 
 import torch
 import torch.nn as nn
-# from attention import TemporalAttn
-
-
-def get_network_class(network_name):
-    """Return the algorithm class with the given name."""
-    if network_name not in globals():
-        raise NotImplementedError("Algorithm not found: {}".format(network_name))
-    return globals()[network_name]
 
 # prediction
 class classifier(nn.Module): 

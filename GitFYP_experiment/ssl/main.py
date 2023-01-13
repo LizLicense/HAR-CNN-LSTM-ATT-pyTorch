@@ -34,7 +34,7 @@ def get_args():
     parser.add_argument("--betas", type=float, default=(0.9, 0.999))
     parser.add_argument("--seed", type=int, default=10)
     # ===================settings===========================
-    parser.add_argument("--data_percentage", type=str, default="100", help="2, 5, 10, 50, 75, 100")
+    parser.add_argument("--data_percentage", type=str, default="75", help="2, 5, 10, 50, 75, 100")
     parser.add_argument("--training_mode", type=str, default="ft",
                         help="Modes of choice: supervised, ssl, ft")
     parser.add_argument("--dataset", type=str, default="HHAR", help="UCI or HAPT OR HHAR")
@@ -56,21 +56,10 @@ def get_args():
 
 def train(train_loader, test_loader, training_mode):
     # logger
-
     logger = starting_logs(args.dataset, training_mode,
                            args.result_path, args.data_percentage)
 
-    # get Network - ssl/supervised
-    # update: to device
-    if args.dataset=="HHAR":
-        backbone_fe = net.cnnNetwork_HHAR().to(args.device)
-    elif args.dataset=="UCI":
-        backbone_fe = net.cnnNetwork_HHAR().to(args.device)
-    elif args.dataset=="HAPT":
-        backbone_fe = net.cnnNetwork_HAPT().to(args.device) 
-    else:
-        print("Dataset not found!"
-    
+    backbone_fe = getNetwork(args.dataset)
     backbone_temporal = net.cnn1d_temporal().to(args.device)
     classifier = net.classifier().to(args.device)
 
@@ -89,7 +78,7 @@ def train(train_loader, test_loader, training_mode):
 
     network = nn.Sequential(backbone_fe, backbone_temporal, classifier)
     optimizer = optim.Adam(network.parameters(), lr=args.lr,
-                           weight_decay=args.weight_decay, betas=(0.9, 0.99))
+                           weight_decay=args.weight_decay, betas=args.betas)
 
     best_f1 = 0
     best_acc = 0
@@ -228,6 +217,19 @@ def surpervised_update(backbone_fe, backbone_temporal, classifier, samples, opti
     # return loss.item()
     return {"Total_loss": loss.item()}, model
 
+
+# get Network - ssl/supervised
+# update: to device
+def getNetwork(dataset):
+    if dataset=="HHAR":
+        backbone_fe = net.cnnNetwork_HHAR().to(args.device)
+    elif dataset=="UCI":
+        backbone_fe = net.cnnNetwork_HHAR().to(args.device)
+    elif dataset=="HAPT":
+        backbone_fe = net.cnnNetwork_HAPT().to(args.device) 
+    else:
+        print("Dataset not found!")
+    return backbone_fe
 
 def calc_results_per_run(pred_labels, true_labels):
     acc, f1 = _calc_metrics(pred_labels, true_labels, classes[args.classes])
