@@ -13,36 +13,42 @@ import torch.nn.functional as F
 from utils import AverageMeter, to_device, _save_metrics, starting_logs, save_checkpoint, _calc_metrics, create_folder
 
 # update with dataset
-classes = ['WALKING', 'WALKING_UPSTAIRS',
-           'WALKING_DOWNSTAIRS', 'SITTING', 'STANDING', 'LAYING']
+classes= {"UCI_classes" :["WALKING", "WALKING_UPSTAIRS",
+           "WALKING_DOWNSTAIRS", "SITTING", "STANDING", "LAYING"],
+        "HHAR_classes" : ["stand", "sit", "walk", "stairsup", "stairsdown", "bike"],
+        "HAPT_classes":["WALKING", "WALKING_UPSTAIRS", "WALKING_DOWNSTAIRS", "SITTING", 
+                    "STANDING", "LAYING", "STAND_TO_SIT", "SIT_TO_STAND", "SIT_TO_LIE", 
+                        "LIE_TO_SIT", "STAND_TO_LIE", "LIE_TO_STAND" ]}
+
 criterion = nn.CrossEntropyLoss()
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     # ===================parameters===========================
-    parser.add_argument('--nepoch', type=int, default=50)  # 50
-    parser.add_argument('--batchsize', type=int, default=64)
-    parser.add_argument('--lr', type=float, default=0.001)  # 0.0003
-    parser.add_argument('--weight_decay', type=float, default=0.0001)
-    parser.add_argument('--momentum', type=float, default=0.9)
-    parser.add_argument('--betas', type=float, default=(0.9, 0.999))
-    parser.add_argument('--seed', type=int, default=10)
+    parser.add_argument("--nepoch", type=int, default=50)  # 50
+    parser.add_argument("--batchsize", type=int, default=64)
+    parser.add_argument("--lr", type=float, default=0.001)  # 0.0003
+    parser.add_argument("--weight_decay", type=float, default=0.0001)
+    parser.add_argument("--momentum", type=float, default=0.9)
+    parser.add_argument("--betas", type=float, default=(0.9, 0.999))
+    parser.add_argument("--seed", type=int, default=10)
     # ===================settings===========================
-    parser.add_argument('--data_folder', type=str, default='../uci_data/')
-    parser.add_argument('--data_percentage', type=str, default='50')
-    parser.add_argument('--save_path', type=str, default='./checkpoint_saved/')
-    parser.add_argument('--result_path', type=str, default='./result/')
-    parser.add_argument('--dataset', type=str,
-                        default='UCI', help='HAPT OR HHAR')
-    parser.add_argument('--training_mode', type=str, default='ssl',
-                        help='Modes of choice: supervised, ssl, ft')
-    parser.add_argument('--augmentation', type=str, default='permute_timeShift_scale_noise',
-                        help='negate_permute_timeShift_scale_noise')
-    parser.add_argument('--device', type=str, default='mps',
-                        help='cpu or mps or cuda:0')
-    parser.add_argument('--oversample', type=bool, default=False,
-                        help='apply oversampling or not?')
+    parser.add_argument("--data_percentage", type=str, default="100", help="2, 5, 10, 50, 75, 100")
+    parser.add_argument("--training_mode", type=str, default="ft",
+                        help="Modes of choice: supervised, ssl, ft")
+    parser.add_argument("--dataset", type=str, default="HHAR", help="UCI or HAPT OR HHAR")
+    parser.add_argument("--classes", type=str, default="HHAR_classes", help="UCI_classes or HAPT_classes OR HHAR_classes")
+    parser.add_argument("--data_folder", type=str, default="../hhar_data/")
+    parser.add_argument("--save_path", type=str, default="./checkpoint_saved/")
+    parser.add_argument("--result_path", type=str, default="./result/")
+    parser.add_argument("--augmentation", type=str, default="permute_timeShift_scale_noise",
+                        help="negate_permute_timeShift_scale_noise")
+    parser.add_argument("--device", type=str, default="mps",
+                        help="cpu or mps or cuda:0")
+    parser.add_argument("--oversample", type=bool, default=False,
+                        help="apply oversampling or not?")
+                        
 
     args = parser.parse_args()
     return args
@@ -50,12 +56,21 @@ def get_args():
 
 def train(train_loader, test_loader, training_mode):
     # logger
+
     logger = starting_logs(args.dataset, training_mode,
                            args.result_path, args.data_percentage)
 
     # get Network - ssl/supervised
     # update: to device
-    backbone_fe = net.cnnNetwork().to(args.device)
+    if args.dataset=="HHAR":
+        backbone_fe = net.cnnNetwork_HHAR().to(args.device)
+    elif args.dataset=="UCI":
+        backbone_fe = net.cnnNetwork_HHAR().to(args.device)
+    elif args.dataset=="HAPT":
+        backbone_fe = net.cnnNetwork_HAPT().to(args.device) 
+    else:
+        print("Dataset not found!"
+    
     backbone_temporal = net.cnn1d_temporal().to(args.device)
     classifier = net.classifier().to(args.device)
 
@@ -66,7 +81,7 @@ def train(train_loader, test_loader, training_mode):
         # load saved models
         # update: get the cp from the same folder
         chekpoint = torch.load(os.path.join(
-            args.save_path, args.dataset, args.data_percentage,  'ssl_checkpoint.pt'))
+            args.save_path, args.dataset, args.data_percentage, "ssl_checkpoint.pt"))
         backbone_fe.load_state_dict(chekpoint["fe"])
 
     elif training_mode not in ["ssl", "supervised"]:
@@ -78,14 +93,13 @@ def train(train_loader, test_loader, training_mode):
 
     best_f1 = 0
     best_acc = 0
-
+    
     # training
     for e in range(args.nepoch):
-
         for sample in train_loader:
             # send data to device
             sample = to_device(sample, args.device)
-
+            # print("sample")
             if training_mode == "ssl":
                 # data pass to update(), return model
                 losses, model = ssl_update(
@@ -116,16 +130,16 @@ def train(train_loader, test_loader, training_mode):
                                 args.dataset, training_mode, args.data_percentage)
                 save_results(best_acc, best_f1)
                 _save_metrics(y_pred, y_true, args.result_path, args.dataset, args.data_percentage,
-                              args.training_mode, classes)
+                              args.training_mode, classes[args.classes])
 
         # logging
-        logger.debug(f'print[Epoch : {e}/{args.nepoch}]')
+        logger.debug(f"print[Epoch : {e}/{args.nepoch}]")
         for key, val in loss_avg_meters.items():
-            logger.debug(f'{key}\t: {val.avg:2.4f}')
+            logger.debug(f"{key}\t: {val.avg:2.4f}")
             if training_mode != "ssl":
                 logger.debug(
-                    f'Acc:{acc_test:2.4f} \t F1:{f1:2.4f} (best: {best_f1:2.4f})')
-        logger.debug(f'-------------------------------------')
+                    f"Acc:{acc_test:2.4f} \t F1:{f1:2.4f} (best: {best_f1:2.4f})")
+        logger.debug(f"-------------------------------------")
 
         # save checkpoint
     if training_mode == "ssl":
@@ -146,8 +160,8 @@ def valid(test_loader, feature_extractor, temporal_encoder, classifier):
         for data in test_loader:
             data_samples = to_device(data, args.device)  # sample to device/mps
 
-            data = data_samples['sample_ori'].float()
-            labels = data_samples['class_labels'].long()
+            data = data_samples["sample_ori"].float()
+            labels = data_samples["class_labels"].long()
 
             # forward pass
             features = feature_extractor(data)
@@ -188,16 +202,16 @@ def ssl_update(backbone_fe, backbone_temporal, classifier, samples, optimizer):
     loss.backward()
     optimizer.step()
 
+    model = [backbone_fe, backbone_temporal, classifier]
     # return loss.item()
-    return {'Total_loss': loss.item()}, \
-        [backbone_fe, backbone_temporal, classifier]
+    return {"Total_loss": loss.item()},model
 
 
 def surpervised_update(backbone_fe, backbone_temporal, classifier, samples, optimizer):
     # ====== Data =====================
     samples = to_device(samples, args.device)
-    data = samples['sample_ori'].float()
-    labels = samples['class_labels'].long()
+    data = samples["sample_ori"].float()
+    labels = samples["class_labels"].long()
 
     optimizer.zero_grad()
     features = backbone_fe(data)
@@ -210,19 +224,19 @@ def surpervised_update(backbone_fe, backbone_temporal, classifier, samples, opti
     loss.backward()
     optimizer.step()
 
+    model=[backbone_fe, backbone_temporal, classifier]
     # return loss.item()
-    return {'Total_loss': loss.item()}, \
-        [backbone_fe, backbone_temporal, classifier]
+    return {"Total_loss": loss.item()}, model
 
 
 def calc_results_per_run(pred_labels, true_labels):
-    acc, f1 = _calc_metrics(pred_labels, true_labels, classes)
+    acc, f1 = _calc_metrics(pred_labels, true_labels, classes[args.classes])
     return acc, f1
 
 
 def save_results(best_acc, best_f1):
-    metrics = {'accuracy': [], 'f1_score': []}
-    run_metrics = {'accuracy': best_acc, 'f1_score': best_f1}
+    metrics = {"accuracy": [], "f1_score": []}
+    run_metrics = {"accuracy": best_acc, "f1_score": best_f1}
     df = pd.DataFrame(columns=["acc", "f1"])
     df.loc[0] = [best_acc, best_f1]
 
@@ -236,9 +250,11 @@ def save_results(best_acc, best_f1):
     df.to_excel(scores_save_path, index=False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+
     args = get_args()
     print(args.training_mode)
+
     torch.manual_seed(args.seed)
     train_loader, test_loader = load_data(args.data_folder, args.training_mode, args.data_percentage,
                                           augmentation=args.augmentation, oversample=args.oversample)

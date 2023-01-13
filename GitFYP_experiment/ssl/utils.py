@@ -97,6 +97,7 @@ def save_checkpoint(home_path, model, dataset, mode, data_percentage):
 
 
 def _calc_metrics(pred_labels, true_labels, classes_names):
+    # print("111", classes_names)
     pred_labels = np.array(pred_labels).astype(int)
     true_labels = np.array(true_labels).astype(int)
 
