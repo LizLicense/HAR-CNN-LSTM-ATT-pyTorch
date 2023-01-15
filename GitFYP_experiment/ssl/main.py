@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from utils import AverageMeter, to_device, _save_metrics, starting_logs, save_checkpoint, _calc_metrics, create_folder
 
 # update with dataset
-classes= {"UCI_classes" :["WALKING", "WALKING_UPSTAIRS",
+classes = {"UCI_classes" :["WALKING", "WALKING_UPSTAIRS",
            "WALKING_DOWNSTAIRS", "SITTING", "STANDING", "LAYING"],
         "HHAR_classes" : ["stand", "sit", "walk", "stairsup", "stairsdown", "bike"],
         "HAPT_classes":["WALKING", "WALKING_UPSTAIRS", "WALKING_DOWNSTAIRS", "SITTING", 
@@ -35,8 +35,8 @@ def get_args():
     parser.add_argument("--seed", type=int, default=10)
     # ===================settings===========================
     parser.add_argument("--data_percentage", type=str, default="75", help="2, 5, 10, 50, 75, 100")
-    parser.add_argument("--training_mode", type=str, default="ft",
-                        help="Modes of choice: supervised, ssl, ft")
+    parser.add_argument("--training_mode", type=str, default="ssl",
+                        help="Modes of choice: supervised(s), ssl, ft")
     parser.add_argument("--dataset", type=str, default="HHAR", help="UCI or HAPT OR HHAR")
     parser.add_argument("--classes", type=str, default="HHAR_classes", help="UCI_classes or HAPT_classes OR HHAR_classes")
     parser.add_argument("--data_folder", type=str, default="../hhar_data/")
@@ -73,7 +73,7 @@ def train(train_loader, test_loader, training_mode):
             args.save_path, args.dataset, args.data_percentage, "ssl_checkpoint.pt"))
         backbone_fe.load_state_dict(chekpoint["fe"])
 
-    elif training_mode not in ["ssl", "supervised"]:
+    elif training_mode not in ["ssl", "supervised", "s"]:
         print("Training mode not found!")
 
     network = nn.Sequential(backbone_fe, backbone_temporal, classifier)
@@ -98,7 +98,7 @@ def train(train_loader, test_loader, training_mode):
                     loss_avg_meters[key].update(val, args.batchsize)
 
             elif training_mode != "ssl":  # supervised training or fine tuining
-                losses, model = surpervised_update(
+                losses, model = supervised_update(
                     backbone_fe, backbone_temporal, classifier, sample, optimizer)
                 # cal metrics f1 acc rate
                 for key, val in losses.items():
@@ -133,7 +133,10 @@ def train(train_loader, test_loader, training_mode):
         # save checkpoint
     if training_mode == "ssl":
         save_checkpoint(args.save_path, model, args.dataset, training_mode, args.data_percentage)
-
+    
+    #logger end
+    logger.debug(f'Dataset: {args.dataset}, Training mode: {args.training_mode}, data %: {args.data_percentage}%')
+    logger.debug("=" * 45)
 
 def valid(test_loader, feature_extractor, temporal_encoder, classifier):
 
@@ -196,7 +199,7 @@ def ssl_update(backbone_fe, backbone_temporal, classifier, samples, optimizer):
     return {"Total_loss": loss.item()},model
 
 
-def surpervised_update(backbone_fe, backbone_temporal, classifier, samples, optimizer):
+def supervised_update(backbone_fe, backbone_temporal, classifier, samples, optimizer):
     # ====== Data =====================
     samples = to_device(samples, args.device)
     data = samples["sample_ori"].float()
