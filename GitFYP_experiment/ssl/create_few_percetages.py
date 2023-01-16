@@ -2,20 +2,23 @@ import os
 import torch
 from sklearn.model_selection import train_test_split
 
-data_dir = r"../hhar_data"
+data_dir = r"../hhar_data/pa"
 output_dir = "../output_data"
 os.makedirs(output_dir, exist_ok=True)
 
-few_lbl_percentages = [2, 5, 10, 50, 75, 100]
+few_lbl_percentages = [1]
 
 
 for percentage in few_lbl_percentages:
     data = torch.load(os.path.join(data_dir, f"train_100per.pt"))
+    if data_dir == '../uci_data':
+        x_data = data["samples"].numpy()
+        y_data = data["labels"].numpy()
+    elif data_dir.startswith('../hhar_data'):
+        x_data = data["samples"]
+        y_data = data["labels"]
 
-    # x_data = data["samples"].numpy()
-    # y_data = data["labels"].numpy()
-    x_data = data["samples"]
-    y_data = data["labels"]
+
 
     X_train, X_val, y_train, y_val = train_test_split(x_data, y_data, test_size=percentage/100, random_state=0)
 

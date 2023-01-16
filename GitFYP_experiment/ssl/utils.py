@@ -107,14 +107,11 @@ def _calc_metrics(pred_labels, true_labels, classes_names):
     # return acc, f1
     return accuracy * 100, r["macro avg"]["f1-score"] * 100
 
-                # _save_metrics(y_pred, y_true, args.result_path, args.dataset, args.data_percentage,
-                #               args.training_mode, classes)
 
 def _save_metrics(pred_labels, true_labels, home_path, dataset, data_percentage, training_mode, classes_names):
     pred_labels = np.array(pred_labels).astype(int)
     true_labels = np.array(true_labels).astype(int)
 
-    # r = classification_report(true_labels, pred_labels, target_names=classes_names, digits=6, output_dict=True)
     r = classification_report(true_labels, pred_labels, target_names=classes_names, digits=6, output_dict=True)
 
     df = pd.DataFrame(r)

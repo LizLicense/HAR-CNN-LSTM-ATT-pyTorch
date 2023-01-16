@@ -9,6 +9,7 @@ import torch.optim as optim
 import argparse
 import seaborn as sn
 import pandas as pd
+import statistics
 import torch.nn.functional as F
 from utils import AverageMeter, to_device, _save_metrics, starting_logs, save_checkpoint, _calc_metrics, create_folder
 
@@ -20,8 +21,13 @@ classes = {"UCI_classes" :["WALKING", "WALKING_UPSTAIRS",
                     "STANDING", "LAYING", "STAND_TO_SIT", "SIT_TO_STAND", "SIT_TO_LIE", 
                         "LIE_TO_SIT", "STAND_TO_LIE", "LIE_TO_STAND" ]}
 
+#loss function
 criterion = nn.CrossEntropyLoss()
+kl_loss = nn.KLDivLoss(reduction = "batchmean")
+mse_loss = nn.MSELoss()
 
+f1_list=[]
+acc_list=[]
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -34,10 +40,10 @@ def get_args():
     parser.add_argument("--betas", type=float, default=(0.9, 0.999))
     parser.add_argument("--seed", type=int, default=10)
     # ===================settings===========================
-    parser.add_argument("--data_percentage", type=str, default="75", help="2, 5, 10, 50, 75, 100")
+    parser.add_argument("--data_percentage", type=str, default="100", help="1, 5, 10, 50, 75, 100")
     parser.add_argument("--training_mode", type=str, default="ssl",
-                        help="Modes of choice: supervised(s), ssl, ft")
-    parser.add_argument("--dataset", type=str, default="HHAR", help="UCI or HAPT OR HHAR")
+                        help="Modes of choice: supervised, ssl(self-supervised), ft(fine-tune)")
+    parser.add_argument("--dataset", type=str, default="UCI", help="UCI or HAPT OR HHAR")
     parser.add_argument("--classes", type=str, default="HHAR_classes", help="UCI_classes or HAPT_classes OR HHAR_classes")
     parser.add_argument("--data_folder", type=str, default="../hhar_data/")
     parser.add_argument("--save_path", type=str, default="./checkpoint_saved/")
@@ -48,6 +54,7 @@ def get_args():
                         help="cpu or mps or cuda:0")
     parser.add_argument("--oversample", type=bool, default=False,
                         help="apply oversampling or not?")
+    parser.add_argument("--consistency", type=str, default="criterion", help="kld or mse or criterion")
                         
 
     args = parser.parse_args()
@@ -58,10 +65,16 @@ def train(train_loader, test_loader, training_mode):
     # logger
     logger = starting_logs(args.dataset, training_mode,
                            args.result_path, args.data_percentage)
+    
+    num_clsTran_tasks = len(args.augmentation.split("_"))
 
     backbone_fe = getNetwork(args.dataset)
     backbone_temporal = net.cnn1d_temporal().to(args.device)
-    classifier = net.classifier().to(args.device)
+    
+    if training_mode=="ssl":
+        classifier = net.ssl_classifier(num_clsTran_tasks).to(args.device)
+    else:
+        classifier = net.classifier().to(args.device)
 
     # Average meters
     loss_avg_meters = collections.defaultdict(lambda: AverageMeter())
@@ -82,7 +95,8 @@ def train(train_loader, test_loader, training_mode):
 
     best_f1 = 0
     best_acc = 0
-    
+
+
     # training
     for e in range(args.nepoch):
         for sample in train_loader:
@@ -92,7 +106,7 @@ def train(train_loader, test_loader, training_mode):
             if training_mode == "ssl":
                 # data pass to update(), return model
                 losses, model = ssl_update(
-                    backbone_fe, backbone_temporal, classifier, sample, optimizer)
+                    backbone_fe, backbone_temporal, classifier, sample, optimizer, consistency=args.consistency)
                 # cal metrics
                 for key, val in losses.items():
                     loss_avg_meters[key].update(val, args.batchsize)
@@ -103,9 +117,12 @@ def train(train_loader, test_loader, training_mode):
                 # cal metrics f1 acc rate
                 for key, val in losses.items():
                     loss_avg_meters[key].update(val, args.batchsize)
+            
+            elif training_mode not in ["ssl", "supervised", "s", "ft"]:
+                print("Training mode not found!")
+                break
 
-        # testing
-        # update: indentation
+        # ft/supervised
         if training_mode != "ssl":
             y_pred, y_true = valid(
                 test_loader, backbone_fe, backbone_temporal, classifier)
@@ -121,11 +138,14 @@ def train(train_loader, test_loader, training_mode):
                 _save_metrics(y_pred, y_true, args.result_path, args.dataset, args.data_percentage,
                               args.training_mode, classes[args.classes])
 
+
         # logging
         logger.debug(f"print[Epoch : {e}/{args.nepoch}]")
         for key, val in loss_avg_meters.items():
             logger.debug(f"{key}\t: {val.avg:2.4f}")
             if training_mode != "ssl":
+                acc_list.append(acc_test)
+                f1_list.append(f1)
                 logger.debug(
                     f"Acc:{acc_test:2.4f} \t F1:{f1:2.4f} (best: {best_f1:2.4f})")
         logger.debug(f"-------------------------------------")
@@ -135,7 +155,9 @@ def train(train_loader, test_loader, training_mode):
         save_checkpoint(args.save_path, model, args.dataset, training_mode, args.data_percentage)
     
     #logger end
-    logger.debug(f'Dataset: {args.dataset}, Training mode: {args.training_mode}, data %: {args.data_percentage}%')
+    if training_mode != "ssl":
+        logger.debug(f'Dataset: {args.dataset}, Training mode: {args.training_mode}, data %: {args.data_percentage}%')
+        logger.debug(f"Mean_Acc:{statistics.mean(acc_list):2.4f} \t Mean_F1:{statistics.mean(f1_list):2.4f} (best: {best_f1:2.4f})")
     logger.debug("=" * 45)
 
 def valid(test_loader, feature_extractor, temporal_encoder, classifier):
@@ -151,7 +173,6 @@ def valid(test_loader, feature_extractor, temporal_encoder, classifier):
     with torch.no_grad():
         for data in test_loader:
             data_samples = to_device(data, args.device)  # sample to device/mps
-
             data = data_samples["sample_ori"].float()
             labels = data_samples["class_labels"].long()
 
@@ -170,15 +191,14 @@ def valid(test_loader, feature_extractor, temporal_encoder, classifier):
             y_pred = np.append(y_pred, pred.cpu().numpy().tolist())
             y_true = np.append(y_true, labels.data.cpu().numpy().tolist())
 
-        # trg_loss = torch.tensor(total_loss_).mean()  # average loss
-
     return y_pred, y_true
 
 
-def ssl_update(backbone_fe, backbone_temporal, classifier, samples, optimizer):
+def ssl_update(backbone_fe, backbone_temporal, classifier, samples, optimizer, consistency):
 
     # ====== Data =====================
     samples = to_device(samples, args.device)
+    ori_data=samples["sample_ori"].float()
     data = samples["transformed_samples"].float()
     labels = samples["aux_labels"].long()
 
@@ -187,10 +207,25 @@ def ssl_update(backbone_fe, backbone_temporal, classifier, samples, optimizer):
 
     features = features.flatten(1, 2)
     logits = classifier(features)
-
+    
     # Cross-Entropy loss
-    loss = criterion(logits, labels)
+    loss_1 = criterion(logits, labels)
+    # KL divergence loss
+    loss_2 = kl_loss(data, ori_data)
+    # print("org_data: ", org_data.size(), "transformed data: ",data.size())
+    # MSE loss
+    loss_3 = mse_loss(data, ori_data)
+    # print("org_data: ", org_data, "transformed data: ",data)
 
+    if consistency == "kld":
+        loss = loss_1+loss_2
+        # print("1: ", loss_1.item(), "2: ", loss_2.item())
+    elif consistency == "mse":
+        loss = loss_1+loss_3  
+        # print("1: ", loss_1.item(), "3: ", loss_3.item())
+    else:
+        loss = loss_1
+    
     loss.backward()
     optimizer.step()
 
@@ -256,16 +291,11 @@ def save_results(best_acc, best_f1):
 
 
 if __name__ == "__main__":
-
     args = get_args()
-    print(args.training_mode)
-
     torch.manual_seed(args.seed)
     train_loader, test_loader = load_data(args.data_folder, args.training_mode, args.data_percentage,
                                           augmentation=args.augmentation, oversample=args.oversample)
-
-    num_clsTran_tasks = len(args.augmentation.split("_"))
-
     # Train model
     train(train_loader, test_loader, args.training_mode)
+
 
