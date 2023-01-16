@@ -23,7 +23,7 @@ classes = {"UCI_classes" :["WALKING", "WALKING_UPSTAIRS",
 
 #loss function
 criterion = nn.CrossEntropyLoss()
-kl_loss = nn.KLDivLoss(reduction = "batchmean")
+kl_loss = nn.KLDivLoss()
 mse_loss = nn.MSELoss()
 
 f1_list=[]
@@ -40,12 +40,14 @@ def get_args():
     parser.add_argument("--betas", type=float, default=(0.9, 0.999))
     parser.add_argument("--seed", type=int, default=10)
     # ===================settings===========================
-    parser.add_argument("--data_percentage", type=str, default="100", help="1, 5, 10, 50, 75, 100")
-    parser.add_argument("--training_mode", type=str, default="ssl",
-                        help="Modes of choice: supervised, ssl(self-supervised), ft(fine-tune)")
-    parser.add_argument("--dataset", type=str, default="UCI", help="UCI or HAPT OR HHAR")
-    parser.add_argument("--classes", type=str, default="HHAR_classes", help="UCI_classes or HAPT_classes OR HHAR_classes")
-    parser.add_argument("--data_folder", type=str, default="../hhar_data/")
+    parser.add_argument("--data_percentage", type=str, help="1, 5, 10, 50, 75, 100") #, default="10"
+    parser.add_argument("--training_mode", type=str, 
+                        help="Modes of choice: supervised, ssl(self-supervised), ft(fine-tune)")# default="ssl",
+    parser.add_argument("--dataset", type=str,  help="UCI or HAPT OR HHAR") # default="UCI",
+    parser.add_argument("--classes", type=str,  help="UCI_classes or HAPT_classes OR HHAR_classes")#default="HHAR_classes",
+    parser.add_argument("--data_folder", type=str, help="../uci_data/ or ../hhar_data/ ") #, default="../hhar_data/"
+    parser.add_argument("--consistency", type=str,  help="kld or mse or criterion") #default="mse",
+    
     parser.add_argument("--save_path", type=str, default="./checkpoint_saved/")
     parser.add_argument("--result_path", type=str, default="./result/")
     parser.add_argument("--augmentation", type=str, default="permute_timeShift_scale_noise",
@@ -54,7 +56,7 @@ def get_args():
                         help="cpu or mps or cuda:0")
     parser.add_argument("--oversample", type=bool, default=False,
                         help="apply oversampling or not?")
-    parser.add_argument("--consistency", type=str, default="criterion", help="kld or mse or criterion")
+
                         
 
     args = parser.parse_args()
@@ -64,7 +66,7 @@ def get_args():
 def train(train_loader, test_loader, training_mode):
     # logger
     logger = starting_logs(args.dataset, training_mode,
-                           args.result_path, args.data_percentage)
+                           args.result_path, args.data_percentage, args.consistency)
     
     num_clsTran_tasks = len(args.augmentation.split("_"))
 
@@ -155,8 +157,8 @@ def train(train_loader, test_loader, training_mode):
         save_checkpoint(args.save_path, model, args.dataset, training_mode, args.data_percentage)
     
     #logger end
+    logger.debug(f'Dataset: {args.dataset}, Training mode: {args.training_mode}, data %: {args.data_percentage}%, consistency: {args.consistency}')
     if training_mode != "ssl":
-        logger.debug(f'Dataset: {args.dataset}, Training mode: {args.training_mode}, data %: {args.data_percentage}%')
         logger.debug(f"Mean_Acc:{statistics.mean(acc_list):2.4f} \t Mean_F1:{statistics.mean(f1_list):2.4f} (best: {best_f1:2.4f})")
     logger.debug("=" * 45)
 
@@ -211,10 +213,10 @@ def ssl_update(backbone_fe, backbone_temporal, classifier, samples, optimizer, c
     # Cross-Entropy loss
     loss_1 = criterion(logits, labels)
     # KL divergence loss
-    loss_2 = kl_loss(data, ori_data)
+    loss_2 = kl_loss(ori_data, data)
     # print("org_data: ", org_data.size(), "transformed data: ",data.size())
     # MSE loss
-    loss_3 = mse_loss(data, ori_data)
+    loss_3 = mse_loss(ori_data, data)
     # print("org_data: ", org_data, "transformed data: ",data)
 
     if consistency == "kld":
@@ -262,7 +264,7 @@ def getNetwork(dataset):
     if dataset=="HHAR":
         backbone_fe = net.cnnNetwork_HHAR().to(args.device)
     elif dataset=="UCI":
-        backbone_fe = net.cnnNetwork_HHAR().to(args.device)
+        backbone_fe = net.cnnNetwork_UCI().to(args.device)
     elif dataset=="HAPT":
         backbone_fe = net.cnnNetwork_HAPT().to(args.device) 
     else:
