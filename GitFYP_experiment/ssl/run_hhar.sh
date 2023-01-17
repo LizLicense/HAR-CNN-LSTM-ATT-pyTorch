@@ -2,7 +2,7 @@
 # ç
 nepoch=50
 # data_percentage="10"
-consistency="mse"
+consistency="kld"
 dataset="HHAR"
 classes="HHAR_classes"
 data_folder="../hhar_data/" 
@@ -71,7 +71,7 @@ python3 main.py --training_mode "ft" \
     --nepoch $nepoch \
     --consistency $consistency \
 
-mv result/HHAR result/HHAR_mse
+mv result/HHAR result/HHAR_kld
 
 # consistency ="mse"
 
