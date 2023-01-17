@@ -29,38 +29,37 @@ mse_loss = nn.MSELoss()
 f1_list=[]
 acc_list=[]
 
-def get_args():
-    parser = argparse.ArgumentParser()
-    # ===================parameters===========================
-    parser.add_argument("--nepoch", type=int, default=50)  # 50
-    parser.add_argument("--batchsize", type=int, default=64)
-    parser.add_argument("--lr", type=float, default=0.001)  # 0.0003
-    parser.add_argument("--weight_decay", type=float, default=0.0001)
-    parser.add_argument("--momentum", type=float, default=0.9)
-    parser.add_argument("--betas", type=float, default=(0.9, 0.999))
-    parser.add_argument("--seed", type=int, default=10)
-    # ===================settings===========================
-    parser.add_argument("--data_percentage", type=str, help="1, 5, 10, 50, 75, 100") #, default="10"
-    parser.add_argument("--training_mode", type=str, 
-                        help="Modes of choice: supervised, ssl(self-supervised), ft(fine-tune)")# default="ssl",
-    parser.add_argument("--dataset", type=str,  help="UCI or HAPT OR HHAR") # default="UCI",
-    parser.add_argument("--classes", type=str,  help="UCI_classes or HAPT_classes OR HHAR_classes")#default="HHAR_classes",
-    parser.add_argument("--data_folder", type=str, help="../uci_data/ or ../hhar_data/ ") #, default="../hhar_data/"
-    parser.add_argument("--consistency", type=str,  help="kld or mse or criterion") #default="mse",
-    
-    parser.add_argument("--save_path", type=str, default="./checkpoint_saved/")
-    parser.add_argument("--result_path", type=str, default="./result/")
-    parser.add_argument("--augmentation", type=str, default="permute_timeShift_scale_noise",
-                        help="negate_permute_timeShift_scale_noise")
-    parser.add_argument("--device", type=str, default="mps",
-                        help="cpu or mps or cuda:0")
-    parser.add_argument("--oversample", type=bool, default=False,
-                        help="apply oversampling or not?")
+# def get_args():
+parser = argparse.ArgumentParser()
+# ===================parameters===========================
+parser.add_argument("--nepoch", type=int, default=50)  # , default=50
+parser.add_argument("--batchsize", type=int, default=64)
+parser.add_argument("--lr", type=float, default=0.001)  # 0.0003
+parser.add_argument("--weight_decay", type=float, default=0.0001)
+parser.add_argument("--momentum", type=float, default=0.9)
+parser.add_argument("--betas", type=float, default=(0.9, 0.999))
+parser.add_argument("--seed", type=int, default=10)
+# ===================settings===========================
+parser.add_argument("--data_percentage", type=str, default="5", help="1, 5, 10, 50, 75, 100")
+parser.add_argument("--training_mode", type=str, default="ft",
+                    help="Modes of choice: supervised, ssl(self-supervised), ft(fine-tune)")
+parser.add_argument("--dataset", type=str, default="UCI", help="UCI or HAPT OR HHAR") 
+parser.add_argument("--classes", type=str, default="UCI_classes", help="UCI_classes or HAPT_classes OR HHAR_classes")
+parser.add_argument("--data_folder", type=str, default="../uci_data/", help="../uci_data/ or ../hhar_data/ ") 
+parser.add_argument("--consistency", type=str, default="criterion", help="kld or mse or criterion")
+parser.add_argument("--save_path", type=str, default="./checkpoint_saved/")
+parser.add_argument("--result_path", type=str, default="./result/")
+parser.add_argument("--augmentation", type=str, default="permute_timeShift_scale_noise",
+                    help="negate_permute_timeShift_scale_noise")
+parser.add_argument("--device", type=str, default="mps",
+                    help="cpu or mps or cuda:0")
+parser.add_argument("--oversample", type=bool, default=False,
+                    help="apply oversampling or not?")
 
-                        
+                    
 
-    args = parser.parse_args()
-    return args
+args = parser.parse_args()
+# return args
 
 
 def train(train_loader, test_loader, training_mode):
@@ -293,7 +292,7 @@ def save_results(best_acc, best_f1):
 
 
 if __name__ == "__main__":
-    args = get_args()
+    # args = get_args()
     torch.manual_seed(args.seed)
     train_loader, test_loader = load_data(args.data_folder, args.training_mode, args.data_percentage,
                                           augmentation=args.augmentation, oversample=args.oversample)

@@ -7,7 +7,7 @@ class classifier(nn.Module):
     def __init__(self):
         super(classifier, self).__init__()
         # print(hparams)
-        self.logits = nn.Linear(in_features=128*128, out_features=6) #64*64
+        self.logits = nn.Linear(in_features=64*64, out_features=6) #64*64
 
     def forward(self, x):
         # print(x.shape)
