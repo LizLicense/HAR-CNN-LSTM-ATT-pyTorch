@@ -32,21 +32,26 @@ acc_list=[]
 # def get_args():
 parser = argparse.ArgumentParser()
 # ===================parameters===========================
-parser.add_argument("--nepoch", type=int, default=50)  # , default=50
-parser.add_argument("--batchsize", type=int, default=64)
+parser.add_argument("--nepoch", type=int, default=50) 
+parser.add_argument("--batchsize", type=int, default=8)
 parser.add_argument("--lr", type=float, default=0.001)  # 0.0003
 parser.add_argument("--weight_decay", type=float, default=0.0001)
 parser.add_argument("--momentum", type=float, default=0.9)
 parser.add_argument("--betas", type=float, default=(0.9, 0.999))
 parser.add_argument("--seed", type=int, default=10)
 # ===================settings===========================
-parser.add_argument("--data_percentage", type=str, default="5", help="1, 5, 10, 50, 75, 100")
-parser.add_argument("--training_mode", type=str, default="ft",
+parser.add_argument("--data_percentage", type=str, default="1", 
+                    help="1, 5, 10, 50, 75, 100")
+parser.add_argument("--training_mode", type=str, default="supervised",
                     help="Modes of choice: supervised, ssl(self-supervised), ft(fine-tune)")
-parser.add_argument("--dataset", type=str, default="UCI", help="UCI or HAPT OR HHAR") 
-parser.add_argument("--classes", type=str, default="UCI_classes", help="UCI_classes or HAPT_classes OR HHAR_classes")
-parser.add_argument("--data_folder", type=str, default="../uci_data/", help="../uci_data/ or ../hhar_data/ ") 
-parser.add_argument("--consistency", type=str, default="criterion", help="kld or mse or criterion")
+parser.add_argument("--dataset", type=str, default="UCI",   
+                    help="UCI or HAPT OR HHAR") 
+parser.add_argument("--classes", type=str, default="UCI_classes", 
+                    help="UCI_classes or HAPT_classes OR HHAR_classes")
+parser.add_argument("--data_folder", type=str, default="../uci_data/", 
+                    help="../uci_data/ or ../hhar_data/ ") 
+parser.add_argument("--consistency", type=str, default="criterion", 
+                    help="kld or mse or criterion")
 parser.add_argument("--save_path", type=str, default="./checkpoint_saved/")
 parser.add_argument("--result_path", type=str, default="./result/")
 parser.add_argument("--augmentation", type=str, default="permute_timeShift_scale_noise",
@@ -200,33 +205,53 @@ def ssl_update(backbone_fe, backbone_temporal, classifier, samples, optimizer, c
     # ====== Data =====================
     samples = to_device(samples, args.device)
     ori_data=samples["sample_ori"].float()
-    data = samples["transformed_samples"].float()
-    labels = samples["aux_labels"].long()
+    trans_data = samples["transformed_samples"].float()
+    aux_labels = samples["aux_labels"].long()
+    ''' # data space
+        optimizer.zero_grad()
+        features = backbone_fe(trans_data).flatten(1, 2)
+        logits = classifier(features)
+        
+        # Cross-Entropy loss
+        loss_1 = criterion(logits, labels)
+        # KL divergence loss
+        loss_2 = kl_loss(ori_data, trans_data)
+        # print("org_data: ", org_data.size(), "transformed data: ",data.size())
+        # MSE loss
+        loss_3 = mse_loss(ori_data, trans_data)
+        # print("org_data: ", org_data, "transformed data: ",data)
+
+        if consistency == "kld":
+            loss = loss_1+loss_2
+            # print("1: ", loss_1.item(), "2: ", loss_2.item())
+        elif consistency == "mse":
+            loss = loss_1+loss_3  
+            # print("1: ", loss_1.item(), "3: ", loss_3.item())
+        else:
+            loss = loss_1
+    '''
 
     optimizer.zero_grad()
-    features = backbone_fe(data)
-
-    features = features.flatten(1, 2)
-    logits = classifier(features)
-    
+    orig_features = backbone_fe(ori_data).flatten(1, 2)
+    trans_features = backbone_fe(trans_data).flatten(1, 2)
+    orig_logits = classifier(orig_features)
+    trans_logits = classifier(trans_features)
     # Cross-Entropy loss
-    loss_1 = criterion(logits, labels)
-    # KL divergence loss
-    loss_2 = kl_loss(ori_data, data)
-    # print("org_data: ", org_data.size(), "transformed data: ",data.size())
-    # MSE loss
-    loss_3 = mse_loss(ori_data, data)
-    # print("org_data: ", org_data, "transformed data: ",data)
-
+    loss_1 = criterion(trans_logits, aux_labels)
+    # KL divergence loss 
     if consistency == "kld":
+        loss_2 = kl_loss(orig_features, trans_features) 
+        # NOTE THAT you can also try (orig_logits, trans_logits)
         loss = loss_1+loss_2
         # print("1: ", loss_1.item(), "2: ", loss_2.item())
+    # MSE loss 
     elif consistency == "mse":
+        loss_3 = mse_loss(orig_features, trans_features)
         loss = loss_1+loss_3  
         # print("1: ", loss_1.item(), "3: ", loss_3.item())
     else:
         loss = loss_1
-    
+
     loss.backward()
     optimizer.step()
 

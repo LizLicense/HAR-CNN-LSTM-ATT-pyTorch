@@ -20,7 +20,7 @@ class ssl_classifier(nn.Module):
     def __init__(self, num):
         super(ssl_classifier, self).__init__()
         # print(hparams)
-        self.logits = nn.Linear(in_features=64*64, out_features=num)
+        self.logits = nn.Linear(in_features=64*64, out_features=num)#64*64
 
     def forward(self, x):
         # print(x.shape)
@@ -34,12 +34,12 @@ class cnnNetwork_UCI(nn.Module):
     def __init__(self):
         super(cnnNetwork_UCI, self).__init__()
         self.conv1 = nn.Sequential(
-            nn.Conv1d(in_channels = 9, out_channels = 64, kernel_size=6, stride=1, padding=2),   #32        
+            nn.Conv1d(in_channels = 9, out_channels = 8, kernel_size=6, stride=1, padding=2),   #64       
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2)
         )
         self.conv2 = nn.Sequential(
-            nn.Conv1d(in_channels = 64, out_channels = 128, kernel_size=3, stride=1, padding =2), #64
+            nn.Conv1d(in_channels = 8, out_channels = 128, kernel_size=3, stride=1, padding =2), #64 128
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2)
         )

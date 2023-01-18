@@ -8,37 +8,55 @@ dataset="UCI"
 classes="UCI_classes"
 data_folder="../uci_data/" 
 
-    # python3 main.py --training_mode "ssl" \
-    #     --data_percentage "10" \
-    #     --dataset $dataset \
-    #     --classes $classes \
-    #     --data_folder $data_folder\
-    #     --nepoch $nepoch \
-    #     --consistency $consistency
+python3 main.py --training_mode "ssl" \
+        --data_percentage "1" \
+        --dataset $dataset \
+        --classes $classes \
+        --data_folder $data_folder\
+        --nepoch $nepoch \
+        --consistency $consistency\
+        --batchsize=32 \
 
-    # python3 main.py --training_mode "ft" \
-    #     --data_percentage "10" \
-    #     --dataset $dataset \
-    #     --classes $classes \
-    #     --data_folder $data_folder\
-    #     --nepoch $nepoch \
-    #     --consistency $consistency
-
-    # python3 main.py --training_mode "ssl" \
-    #     --data_percentage "50" \
-    #     --dataset $dataset \
-    #     --classes $classes \
-    #     --data_folder $data_folder\
-    #     --nepoch $nepoch \
-    #     --consistency $consistency
 
 python3 main.py --training_mode "ft" \
-    --data_percentage "50" \
-    --dataset $dataset \
-    --classes $classes \
-    --data_folder $data_folder\
-    --nepoch $nepoch \
-    --consistency $consistency 
+        --data_percentage "1" \
+        --dataset $dataset \
+        --classes $classes \
+        --data_folder $data_folder\
+        --nepoch $nepoch \
+        --consistency $consistency \
+        --batchsize=32
+# python3 main.py --training_mode "ssl" \
+#         --data_percentage "10" \
+#         --dataset $dataset \
+#         --classes $classes \
+#         --data_folder $data_folder\
+#         --nepoch $nepoch \
+#         --consistency $consistency
 
-mv result/UCI result/UCI_C
+# python3 main.py --training_mode "ft" \
+#         --data_percentage "10" \
+#         --dataset $dataset \
+#         --classes $classes \
+#         --data_folder $data_folder\
+#         --nepoch $nepoch \
+#         --consistency $consistency
+
+# python3 main.py --training_mode "ssl" \
+#         --data_percentage "50" \
+#         --dataset $dataset \
+#         --classes $classes \
+#         --data_folder $data_folder\
+#         --nepoch $nepoch \
+#         --consistency $consistency
+
+# python3 main.py --training_mode "ft" \
+#     --data_percentage "50" \
+#     --dataset $dataset \
+#     --classes $classes \
+#     --data_folder $data_folder\
+#     --nepoch $nepoch \
+#     --consistency $consistency 
+
+# mv result/UCI result/UCI_C
 
