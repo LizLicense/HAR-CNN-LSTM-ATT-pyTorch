@@ -25,6 +25,12 @@ classes = {"UCI_classes" :["WALKING", "WALKING_UPSTAIRS",
 criterion = nn.CrossEntropyLoss()
 kl_loss = nn.KLDivLoss()
 mse_loss = nn.MSELoss()
+eps=1e-7
+cosSim_loss=nn.CosineSimilarity() #calculates the cosine similarity between two input vectors
+tripletMargin_loss=nn.TripletMarginLoss() # which enforces similarity between the anchor and positive examples, while maximizing the dissimilarity between the anchor and negative examples.
+cosEmb_loss=nn.CosineEmbeddingLoss(margin=0.0,) # enforces similar images to have a low distance while dissimilar images have a large distance.
+# wasserstein_loss = nn.WassersteinLoss()#which is more stable than other GAN losses
+# jensenD_loss = nn.JensenShannonDivergence() #which calculates the Jensen-Shannon divergence between the two input distributions.
 
 f1_list=[]
 acc_list=[]
@@ -32,26 +38,26 @@ acc_list=[]
 # def get_args():
 parser = argparse.ArgumentParser()
 # ===================parameters===========================
-parser.add_argument("--nepoch", type=int, default=50) 
-parser.add_argument("--batchsize", type=int, default=8)
+parser.add_argument("--nepoch", type=int, default=1) 
+parser.add_argument("--batchsize", type=int, default=64)
 parser.add_argument("--lr", type=float, default=0.001)  # 0.0003
-parser.add_argument("--weight_decay", type=float, default=0.0001)
+parser.add_argument("--weight_decay", type=float, default=0.001)
 parser.add_argument("--momentum", type=float, default=0.9)
 parser.add_argument("--betas", type=float, default=(0.9, 0.999))
 parser.add_argument("--seed", type=int, default=10)
 # ===================settings===========================
-parser.add_argument("--data_percentage", type=str, default="1", 
+parser.add_argument("--data_percentage", type=str, default="10", 
                     help="1, 5, 10, 50, 75, 100")
-parser.add_argument("--training_mode", type=str, default="supervised",
+parser.add_argument("--training_mode", type=str, default="ssl",
                     help="Modes of choice: supervised, ssl(self-supervised), ft(fine-tune)")
-parser.add_argument("--dataset", type=str, default="UCI",   
+parser.add_argument("--dataset", type=str, default="HHAR",   
                     help="UCI or HAPT OR HHAR") 
-parser.add_argument("--classes", type=str, default="UCI_classes", 
+parser.add_argument("--classes", type=str, default="HHAR_classes", 
                     help="UCI_classes or HAPT_classes OR HHAR_classes")
-parser.add_argument("--data_folder", type=str, default="../uci_data/", 
+parser.add_argument("--data_folder", type=str, default="../hhar_data/", 
                     help="../uci_data/ or ../hhar_data/ ") 
-parser.add_argument("--consistency", type=str, default="criterion", 
-                    help="kld or mse or criterion")
+parser.add_argument("--consistency", type=str, default="coe", 
+                    help="kld or mse or criterion or cos or tri or coe or was or jen")
 parser.add_argument("--save_path", type=str, default="./checkpoint_saved/")
 parser.add_argument("--result_path", type=str, default="./result/")
 parser.add_argument("--augmentation", type=str, default="permute_timeShift_scale_noise",
@@ -207,29 +213,6 @@ def ssl_update(backbone_fe, backbone_temporal, classifier, samples, optimizer, c
     ori_data=samples["sample_ori"].float()
     trans_data = samples["transformed_samples"].float()
     aux_labels = samples["aux_labels"].long()
-    ''' # data space
-        optimizer.zero_grad()
-        features = backbone_fe(trans_data).flatten(1, 2)
-        logits = classifier(features)
-        
-        # Cross-Entropy loss
-        loss_1 = criterion(logits, labels)
-        # KL divergence loss
-        loss_2 = kl_loss(ori_data, trans_data)
-        # print("org_data: ", org_data.size(), "transformed data: ",data.size())
-        # MSE loss
-        loss_3 = mse_loss(ori_data, trans_data)
-        # print("org_data: ", org_data, "transformed data: ",data)
-
-        if consistency == "kld":
-            loss = loss_1+loss_2
-            # print("1: ", loss_1.item(), "2: ", loss_2.item())
-        elif consistency == "mse":
-            loss = loss_1+loss_3  
-            # print("1: ", loss_1.item(), "3: ", loss_3.item())
-        else:
-            loss = loss_1
-    '''
 
     optimizer.zero_grad()
     orig_features = backbone_fe(ori_data).flatten(1, 2)
@@ -238,17 +221,10 @@ def ssl_update(backbone_fe, backbone_temporal, classifier, samples, optimizer, c
     trans_logits = classifier(trans_features)
     # Cross-Entropy loss
     loss_1 = criterion(trans_logits, aux_labels)
-    # KL divergence loss 
-    if consistency == "kld":
-        loss_2 = kl_loss(orig_features, trans_features) 
-        # NOTE THAT you can also try (orig_logits, trans_logits)
-        loss = loss_1+loss_2
-        # print("1: ", loss_1.item(), "2: ", loss_2.item())
-    # MSE loss 
-    elif consistency == "mse":
-        loss_3 = mse_loss(orig_features, trans_features)
-        loss = loss_1+loss_3  
-        # print("1: ", loss_1.item(), "3: ", loss_3.item())
+
+    if consistency in ["kld", "mse", "cos", "tri", "coe", "was", "jen"]:
+        consistency_loss = get_loss(consistency, orig_features, trans_features, orig_logits, trans_logits )
+        loss = loss_1 + consistency_loss
     else:
         loss = loss_1
 
@@ -294,6 +270,50 @@ def getNetwork(dataset):
     else:
         print("Dataset not found!")
     return backbone_fe
+
+def get_loss(consistency, orig_features, trans_features, orig_logits, trans_logits):
+    if consistency == "kld":
+    # loss_2 = kl_loss(ori_data, trans_data)
+        trans_features = trans_features+eps
+        # normalization
+        orig_features = orig_features/orig_features.max()
+        trans_features = trans_features/trans_features.max()
+        consistency_loss = kl_loss(orig_features, trans_features)
+    # loss_2 = kl_loss(orig_logits+eps, trans_logits)
+    # print(torch.isnan(ori_data).any())
+    # print(torch.isnan(trans_data).any())
+    # torch.save(orig_features, 'tensor_saved/orig_features.pt')
+    # torch.save(trans_features, 'tensor_saved/trans_logits.pt')
+    # print("1: ", loss_1.item(), "2: ", loss_2.item())
+
+# MSE loss 
+    elif consistency == "mse":
+        # loss_3 = mse_loss(orig_features, trans_features)
+        # loss_3 = mse_loss(orig_logits, trans_logits)
+        loss_4 = mse_loss(orig_features, trans_features)
+        consistency_loss = loss_4
+        # print("1: ", loss_1.item(), "3: ", loss_3.item())
+
+    elif consistency == "cos":
+        torch.save(orig_features, 'tensor_saved/orig_features_cos.pt')
+        torch.save(trans_features, 'tensor_saved/trans_logits_cos.pt')
+        consistency_loss = cosSim_loss(orig_features, trans_features)
+
+    elif consistency == "tri":
+        consistency_loss = tripletMargin_loss(orig_features,orig_features, trans_features)
+    elif consistency == "coe" :
+        # cosine similarity between original and transformed data
+        cosine_similarity = F.cosine_similarity(orig_features, trans_features)
+        # target tensor, indicating whether the original and transformed data are similar
+        target = torch.ones(cosine_similarity.size())
+        # print(cosine_similarity.size())
+        # print(target.size())
+        consistency_loss = cosEmb_loss(orig_features,trans_features, target.to(args.device))
+    # elif consistency == "cos", "tri", "was", "jen":
+    else: 
+        consistency_loss = 0
+    
+    return consistency_loss
 
 def calc_results_per_run(pred_labels, true_labels):
     acc, f1 = _calc_metrics(pred_labels, true_labels, classes[args.classes])
