@@ -63,12 +63,12 @@ def _logger(logger_name, level=logging.DEBUG):
     return logger
 
 
-def starting_logs(dataset, train_mode, exp_log_dir, data_percentage, consistency):
+def starting_logs(dataset, train_mode, exp_log_dir, data_percentage, consistency, oversample):
     log_dir = os.path.join(exp_log_dir, dataset, data_percentage, train_mode)
     os.makedirs(log_dir, exist_ok=True)
     log_file_name = os.path.join(log_dir, f"logs_{datetime.now().strftime('%d_%m_%Y_%H_%M_%S')}.log")
     logger = _logger(log_file_name)
-    logger.debug(f'Dataset: {dataset}, Training mode: {train_mode}, data %: {data_percentage}%, consistency: {consistency}')
+    logger.debug(f'Dataset: {dataset}, Training mode: {train_mode}, data %: {data_percentage}%, consistency: {consistency}, oversample: {oversample}')
     logger.debug("=" * 45)
     return logger
 

@@ -38,7 +38,7 @@ acc_list=[]
 # def get_args():
 parser = argparse.ArgumentParser()
 # ===================parameters===========================
-parser.add_argument("--nepoch", type=int, default=1) 
+parser.add_argument("--nepoch", type=int, default=50) 
 parser.add_argument("--batchsize", type=int, default=64)
 parser.add_argument("--lr", type=float, default=0.001)  # 0.0003
 parser.add_argument("--weight_decay", type=float, default=0.001)
@@ -46,26 +46,28 @@ parser.add_argument("--momentum", type=float, default=0.9)
 parser.add_argument("--betas", type=float, default=(0.9, 0.999))
 parser.add_argument("--seed", type=int, default=10)
 # ===================settings===========================
-parser.add_argument("--data_percentage", type=str, default="10", 
+parser.add_argument("--data_percentage", type=str, default="1", 
                     help="1, 5, 10, 50, 75, 100")
 parser.add_argument("--training_mode", type=str, default="ssl",
                     help="Modes of choice: supervised, ssl(self-supervised), ft(fine-tune)")
-parser.add_argument("--dataset", type=str, default="HHAR",   
+parser.add_argument("--dataset", type=str, default="HAPT",   
                     help="UCI or HAPT OR HHAR") 
-parser.add_argument("--classes", type=str, default="HHAR_classes", 
+parser.add_argument("--classes", type=str, default="HAPT_classes", 
                     help="UCI_classes or HAPT_classes OR HHAR_classes")
-parser.add_argument("--data_folder", type=str, default="../hhar_data/", 
+parser.add_argument("--data_folder", type=str, default="../hapt_data/", 
                     help="../uci_data/ or ../hhar_data/ ") 
-parser.add_argument("--consistency", type=str, default="coe", 
-                    help="kld or mse or criterion or cos or tri or coe or was or jen")
+parser.add_argument("--consistency", type=str, default="criterion", 
+                    help="mse or criterion or kld or cos or tri or coe or was or jen")
 parser.add_argument("--save_path", type=str, default="./checkpoint_saved/")
 parser.add_argument("--result_path", type=str, default="./result/")
 parser.add_argument("--augmentation", type=str, default="permute_timeShift_scale_noise",
                     help="negate_permute_timeShift_scale_noise")
 parser.add_argument("--device", type=str, default="mps",
                     help="cpu or mps or cuda:0")
-parser.add_argument("--oversample", type=bool, default=False,
-                    help="apply oversampling or not?")
+parser.add_argument("--oversample", type=bool, default = True,
+                    help="apply oversampling or not? True or False")
+parser.add_argument("--predict_features", type=int, default = 47*128,
+                   help="47*128 for HAPT, 64*64 for other dataset")
 
                     
 
@@ -76,17 +78,18 @@ args = parser.parse_args()
 def train(train_loader, test_loader, training_mode):
     # logger
     logger = starting_logs(args.dataset, training_mode,
-                           args.result_path, args.data_percentage, args.consistency)
+                           args.result_path, args.data_percentage, args.consistency, args.oversample)
     
     num_clsTran_tasks = len(args.augmentation.split("_"))
-
+    num_dataset_class = len(args.classes)
+    print("num_dataset_class", num_dataset_class)
     backbone_fe = getNetwork(args.dataset)
     backbone_temporal = net.cnn1d_temporal().to(args.device)
     
     if training_mode=="ssl":
-        classifier = net.ssl_classifier(num_clsTran_tasks).to(args.device)
+        classifier = net.ssl_classifier(num_clsTran_tasks, args.predict_features).to(args.device)
     else:
-        classifier = net.classifier().to(args.device)
+        classifier = net.classifier(num_dataset_class, args.predict_features).to(args.device)
 
     # Average meters
     loss_avg_meters = collections.defaultdict(lambda: AverageMeter())
@@ -286,9 +289,7 @@ def get_loss(consistency, orig_features, trans_features, orig_logits, trans_logi
     # torch.save(trans_features, 'tensor_saved/trans_logits.pt')
     # print("1: ", loss_1.item(), "2: ", loss_2.item())
 
-# MSE loss 
     elif consistency == "mse":
-        # loss_3 = mse_loss(orig_features, trans_features)
         # loss_3 = mse_loss(orig_logits, trans_logits)
         loss_4 = mse_loss(orig_features, trans_features)
         consistency_loss = loss_4
