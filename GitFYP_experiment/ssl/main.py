@@ -39,16 +39,16 @@ acc_list=[]
 parser = argparse.ArgumentParser()
 # ===================parameters===========================
 parser.add_argument("--nepoch", type=int, default=50) 
-parser.add_argument("--batchsize", type=int, default=64)
+parser.add_argument("--batchsize", type=int, default=32)
 parser.add_argument("--lr", type=float, default=0.001)  # 0.0003
 parser.add_argument("--weight_decay", type=float, default=0.001)
 parser.add_argument("--momentum", type=float, default=0.9)
 parser.add_argument("--betas", type=float, default=(0.9, 0.999))
 parser.add_argument("--seed", type=int, default=10)
 # ===================settings===========================
-parser.add_argument("--data_percentage", type=str, default="1", 
+parser.add_argument("--data_percentage", type=str, default="5", 
                     help="1, 5, 10, 50, 75, 100")
-parser.add_argument("--training_mode", type=str, default="ssl",
+parser.add_argument("--training_mode", type=str, default="ft",
                     help="Modes of choice: supervised, ssl(self-supervised), ft(fine-tune)")
 parser.add_argument("--dataset", type=str, default="HAPT",   
                     help="UCI or HAPT OR HHAR") 
@@ -56,7 +56,7 @@ parser.add_argument("--classes", type=str, default="HAPT_classes",
                     help="UCI_classes or HAPT_classes OR HHAR_classes")
 parser.add_argument("--data_folder", type=str, default="../hapt_data/", 
                     help="../uci_data/ or ../hhar_data/ ") 
-parser.add_argument("--consistency", type=str, default="criterion", 
+parser.add_argument("--consistency", type=str, default="mse", 
                     help="mse or criterion or kld or cos or tri or coe or was or jen")
 parser.add_argument("--save_path", type=str, default="./checkpoint_saved/")
 parser.add_argument("--result_path", type=str, default="./result/")
@@ -100,6 +100,7 @@ def train(train_loader, test_loader, training_mode):
         chekpoint = torch.load(os.path.join(
             args.save_path, args.dataset, args.data_percentage, "ssl_checkpoint.pt"))
         backbone_fe.load_state_dict(chekpoint["fe"])
+        # print('model loaded:', backbone_fe)
 
     elif training_mode not in ["ssl", "supervised", "s"]:
         print("Training mode not found!")
@@ -111,13 +112,12 @@ def train(train_loader, test_loader, training_mode):
     best_f1 = 0
     best_acc = 0
 
-
+    
     # training
     for e in range(args.nepoch):
         for sample in train_loader:
             # send data to device
             sample = to_device(sample, args.device)
-            # print("sample")
             if training_mode == "ssl":
                 # data pass to update(), return model
                 losses, model = ssl_update(
@@ -127,8 +127,10 @@ def train(train_loader, test_loader, training_mode):
                     loss_avg_meters[key].update(val, args.batchsize)
 
             elif training_mode != "ssl":  # supervised training or fine tuining
+                # print("not ssl")
                 losses, model = supervised_update(
                     backbone_fe, backbone_temporal, classifier, sample, optimizer)
+                
                 # cal metrics f1 acc rate
                 for key, val in losses.items():
                     loss_avg_meters[key].update(val, args.batchsize)
@@ -139,6 +141,7 @@ def train(train_loader, test_loader, training_mode):
 
         # ft/supervised
         if training_mode != "ssl":
+            
             y_pred, y_true = valid(
                 test_loader, backbone_fe, backbone_temporal, classifier)
             acc_test, f1 = calc_results_per_run(y_pred, y_true)
@@ -170,7 +173,7 @@ def train(train_loader, test_loader, training_mode):
         save_checkpoint(args.save_path, model, args.dataset, training_mode, args.data_percentage)
     
     #logger end
-    logger.debug(f'Dataset: {args.dataset}, Training mode: {args.training_mode}, data %: {args.data_percentage}%, consistency: {args.consistency}')
+    logger.debug(f'Dataset: {args.dataset}, Training mode: {args.training_mode}, data %: {args.data_percentage}%, consistency: {args.consistency}, oversample: {args.oversample}')
     if training_mode != "ssl":
         logger.debug(f"Mean_Acc:{statistics.mean(acc_list):2.4f} \t Mean_F1:{statistics.mean(f1_list):2.4f} (best: {best_f1:2.4f})")
     logger.debug("=" * 45)
@@ -342,6 +345,7 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     train_loader, test_loader = load_data(args.data_folder, args.training_mode, args.data_percentage,
                                           augmentation=args.augmentation, oversample=args.oversample)
+
     # Train model
     train(train_loader, test_loader, args.training_mode)
 

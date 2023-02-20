@@ -108,7 +108,7 @@ class data_loader(Dataset):
 # if there exists parsed data file, then use it
 # If not, parse the original dataset from scratch
 def load_data(data_folder, train_mode, data_percentage, augmentation, oversample):
-        # print("111")
+        print(oversample)
         # load .pt file
         if train_mode == "ssl":  # we always want to do ssl with full labels.
             data_percentage = 100
