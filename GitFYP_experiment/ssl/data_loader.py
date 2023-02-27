@@ -107,7 +107,7 @@ class data_loader(Dataset):
 # data generator
 # if there exists parsed data file, then use it
 # If not, parse the original dataset from scratch
-def load_data(data_folder, train_mode, data_percentage, augmentation, oversample):
+def load_data(batch_size, data_folder, train_mode, data_percentage, augmentation, oversample):
         print(oversample)
         # load .pt file
         if train_mode == "ssl":  # we always want to do ssl with full labels.
@@ -121,7 +121,6 @@ def load_data(data_folder, train_mode, data_percentage, augmentation, oversample
         val_dataset = data_loader(val_data, True, train_mode, augmentation, oversample)
 
         # Dataloaders
-        batch_size = 64
         train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size,
                                                 shuffle=True, drop_last=True, num_workers=0)
 
