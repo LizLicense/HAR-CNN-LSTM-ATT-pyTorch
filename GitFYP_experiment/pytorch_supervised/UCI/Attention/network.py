@@ -39,7 +39,7 @@ class Network(nn.Module):
         # print("dropout", out.shape, out.dtype)
         out, hidden = self.lstm(out)
         out = self.tanh(out)
-        # print("lstm", out.dtype, out.shape)
+        print("lstm", out.dtype, out.shape)
         #attention
         out, weights=self.attn(out)
         out = self.flatten(out)

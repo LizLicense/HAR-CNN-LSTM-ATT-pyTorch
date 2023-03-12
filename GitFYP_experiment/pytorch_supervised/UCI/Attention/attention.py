@@ -10,7 +10,7 @@ Reference: Learn To Pay Attention
 class ProjectorBlock(nn.Module):
     def __init__(self, in_features, out_features):
         super(ProjectorBlock, self).__init__()
-        self.op = nn.Conv2d(in_channels=in_features, out_channels=out_features,
+        self.op = nn.Conv1d(in_channels=in_features, out_channels=out_features,
             kernel_size=1, padding=0, bias=False)
 
     def forward(self, x):
@@ -58,7 +58,8 @@ class TemporalAttn(nn.Module):
         score = torch.bmm(score_first_part, h_t.unsqueeze(2)).squeeze(2)
         attention_weights = F.softmax(score, dim=1)
         # (batch_size, hidden_size)
-        context_vector = torch.bmm(hidden_states.permute(0,2,1), attention_weights.unsqueeze(2)).squeeze(2)
+        # context_vector = torch.bmm(hidden_states.permute(0,2,1), attention_weights.unsqueeze(2)).squeeze(2)\
+        context_vector = torch.bmm(hidden_states.transpose(1, 2), attention_weights.unsqueeze(2)).squeeze(2)
         # (batch_size, hidden_size*2)
         pre_activation = torch.cat((context_vector, h_t), dim=1)
         # (batch_size, hidden_size)
@@ -70,11 +71,14 @@ class TemporalAttn(nn.Module):
 # Test
 if __name__ == '__main__':
     # 2d block
-    spatial_block = SpatialAttn(in_features=3)
-    l = torch.randn(16, 3, 128, 128)
-    g = torch.randn(16, 3, 128, 128)
-    print(spatial_block(l, g))
+    # spatial_block = SpatialAttn(in_features=3)
+    # l = torch.randn(16, 3, 128, 128)
+    # g = torch.randn(16, 3, 128, 128)
+    # print(spatial_block(l, g))
     # temporal block
     temporal_block = TemporalAttn(hidden_size=256)
     x = torch.randn(16, 30, 256)
-    print(temporal_block(x).shape)
+    attention_vector, attention_weights = temporal_block(x)
+    print(attention_vector.shape) # should output (16, 256)
+    print(attention_weights.shape) # should output (16, 30)
+    # print(temporal_block(x).shape)
