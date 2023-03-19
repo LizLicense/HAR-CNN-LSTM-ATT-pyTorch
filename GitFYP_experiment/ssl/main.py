@@ -46,9 +46,9 @@ parser.add_argument("--momentum", type=float, default=0.9)
 parser.add_argument("--betas", type=float, default=(0.9, 0.999))
 parser.add_argument("--seed", type=int, default=10)
 # ===================settings===========================
-parser.add_argument("--data_percentage", type=str, default="1", 
+parser.add_argument("--data_percentage", type=str, default="10", 
                     help="1, 5, 10, 50, 75, 100")
-parser.add_argument("--training_mode", type=str, default="ft",
+parser.add_argument("--training_mode", type=str, default="ssl",
                     help="Modes of choice: supervised, ssl(self-supervised), ft(fine-tune)")
 parser.add_argument("--dataset", type=str, default="HAPT",   
                     help="UCI or HAPT OR HHAR") 
@@ -64,10 +64,10 @@ parser.add_argument("--augmentation", type=str, default="permute_timeShift_scale
                     help="negate_permute_timeShift_scale_noise")
 parser.add_argument("--device", type=str, default="cpu",
                     help="cpu or mps or cuda:0")
-parser.add_argument("--oversample", type=bool, default = True,
+parser.add_argument("--oversample", type=bool, default = False,
                     help="apply oversampling or not? True or False")
 parser.add_argument("--predict_features", type=int, default = 6144,
-                   help="47*128/ 6144 for HAPT,x4352(UCI,HHAR conv3) for other dataset; 64*64 conv2")
+                   help="47*128 /6144 (HAPT conv3); 4352(UCI,HHAR conv3); 64*64 /1024 conv2; 32768 (3CNNLSTM)")
 
                     
 

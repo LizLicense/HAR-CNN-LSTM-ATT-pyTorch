@@ -7,7 +7,7 @@ class classifier(nn.Module):
     def __init__(self, num, f):
         super(classifier, self).__init__()
         # print(hparams)
-        self.logits = nn.Linear(in_features=f, out_features=num) #64*64, 47*128 for HAPT
+        self.logits = nn.Linear(in_features=f, out_features=num)
 
     def forward(self, x):
         # print(x.shape)
@@ -53,7 +53,7 @@ class cnnNetwork_UCI(nn.Module):
         self.flatten = torch.nn.Flatten()
         self.dropout = torch.nn.Dropout(0.1)
 
-        self.lstm = nn.LSTM(input_size=32, hidden_size=128, num_layers=1)
+        self.lstm = nn.LSTM(input_size=17, hidden_size=128, num_layers=1)
         self.tanh = torch.nn.Tanh()
         # self.attn = TemporalAttn(hidden_size=64)
         # self.fc = nn.Linear(in_features=64, out_features=6)
@@ -67,18 +67,9 @@ class cnnNetwork_UCI(nn.Module):
         out = self.conv2(out)
         out = self.conv3(out)
         out = self.dropout(out)
-        #print("dropout", out.shape, out.dtype)
         # out, hidden = self.lstm(out)
         # out = self.tanh(out)
-        #print("lstm", out.dtype, out.shape)
-        #attention
-        # out, weights=self.attn(out)
-        # out = self.flatten(out)
-        #print("flatten", out.dtype, out.shape)
-        # out = self.fc(out)
-        #print("fc", out.dtype, out.shape)
-        # out = self.softmax(out)
-        #print("sm", out.dtype, out.shape)
+
 
         return out
 
@@ -113,7 +104,7 @@ class cnnNetwork_HHAR(nn.Module):
         self.flatten = torch.nn.Flatten()
         self.dropout = torch.nn.Dropout(0.1)
 
-        self.lstm = nn.LSTM(input_size=32, hidden_size=128, num_layers=1)
+        self.lstm = nn.LSTM(input_size=17, hidden_size=128, num_layers=1)
         self.tanh = torch.nn.Tanh()
         # self.attn = TemporalAttn(hidden_size=32)
         self.fc = nn.Linear(in_features=128*128, out_features=6)
@@ -125,17 +116,9 @@ class cnnNetwork_HHAR(nn.Module):
         out = self.conv2(out)
         out = self.conv3(out)
         out = self.dropout(out)
-        # print("dropout", out.shape, out.dtype)
         # out, hidden = self.lstm(out)
         # out = self.tanh(out)
-        # print("lstm", out.dtype, out.shape)
-        # out = self.flatten(out)
-        # print("flatten", out.dtype, out.shape)
-        # out = self.fc(out)
-        # print("fc", out.dtype, out.shape)
-        # out = self.softmax(out)
-        # print("sm", out.dtype, out.shape)
-
+       
         return out
 
 
@@ -163,7 +146,7 @@ class cnnNetwork_HAPT(nn.Module):
         self.flatten = torch.nn.Flatten()
         self.dropout = torch.nn.Dropout(0.1)
 
-        self.lstm = nn.LSTM(input_size=47, hidden_size=128, num_layers=1)
+        self.lstm = nn.LSTM(input_size=24, hidden_size=128, num_layers=1)
         self.tanh = torch.nn.Tanh()
 
         self.fc = nn.Linear(in_features=128*128, out_features=12)
@@ -176,16 +159,9 @@ class cnnNetwork_HAPT(nn.Module):
         out = self.conv2(out)
         out = self.conv3(out)
         out = self.dropout(out)
-        # print("dropout", out.shape, out.dtype)
         # out, hidden = self.lstm(out)
         # out = self.tanh(out)
-        # print("lstm", out.dtype, out.shape)
-        # out = self.flatten(out)
-        # print("flatten", out.dtype, out.shape)
-        # out = self.fc(out)
-        # print("fc", out.dtype, out.shape)
-        # out = self.softmax(out)
-        # print("sm", out.dtype, out.shape)
+
 
         return out
 
