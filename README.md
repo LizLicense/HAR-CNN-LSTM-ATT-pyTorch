@@ -51,9 +51,11 @@ There are many public datasets for human activity recognition. You can refer to 
 In this demo, we will use UCI and HAPT dataset as examples. 
 
 
+## Code reference
+1. supervised learning: https://github.com/jindongwang/Deep-learning-activity-recognition.git
+2. self-supervised learning: https://github.com/emadeldeen24/TS-TCC.git; https://github.com/emadeldeen24/eval_ssl_ssc.git
 
 
-# Appendix (to be updated)
 
 ## Usage
 Go to `HAR-CNN-LSTM` folder, config the folder of your data in `config.py`, and then run `main_pytorch.py`.
@@ -88,12 +90,10 @@ In github, there is no repo using **pyTorch nn** with **conv1d and lstm** with U
 
 Since time series data is in 1 dimension, I amended JinDong's network file from conv2d into conv1d. 
 
-## Paper and reference
-Architecture of CNN-LSTM networks refers to paper: [Hybrid Model Featuring CNN and LSTM Architecture for Human Activity Recognition on Smartphone Sensor Data](https://ieeexplore.ieee.org/document/9029136) by Samundra Deep and Xi Zheng ; [A CNN-LSTM Approach to Human Activity Recognition](https://ieeexplore.ieee.org/document/9065078) by Ronald Mutegeki and Dong Seog Han.
 
-Network Python code is implemented with reference by [Deep-learning-activity-recognition](https://github.com/jindongwang/Deep-learning-activity-recognition.git) by JinDong Wang.
+## A Self-supervised approach 1D-CNN Approach to Human Activity Recognition in pyTorch
 
-## Future work
+The result is compared the SSL training with few labels and supervised network training with full labels. It proved that SSL can achieved higher f1-score. 
 
 
 
