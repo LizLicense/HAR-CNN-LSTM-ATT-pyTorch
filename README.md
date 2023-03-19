@@ -4,7 +4,7 @@
 
 2. `Dataset` foler: 3 datasets, UCI, HAPT, and HHAR.
 
-##  ============================self-supervised learning======================
+##  ========self-supervised learning========
 
 ### datasets
  [UCIHAR Dataset](https://archive.ics.uci.edu/ml/machine-learning-databases/00240/); 
@@ -25,7 +25,7 @@ Fine-tuning: use "ft" in the training mode
 In `GitFYP_experiment/ssl` folder: run the `main.py` file to excute the code. Other settings in the def get_args() function. 
 
 
-##  =====================supervised learning=======================
+##  ========supervised learning========
 1.  `GitFYP_experiment/pytorch_supervised` folder:
 `mian_pytorch.py`: 
 CNN-LSTM model: cd to `GitFYP_experiment` folder, run the `mian_pytorch.py` in `pytorch_supervised/HAPT`, `pytorch_supervised/HHAR`, and `pytorch_supervised/UCI` folder. 
