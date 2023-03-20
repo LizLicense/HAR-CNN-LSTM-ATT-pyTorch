@@ -29,7 +29,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--nepoch', type=int, default=50)
     parser.add_argument('--batchsize', type=int, default=64) #128 64
-    parser.add_argument('--lr', type=float, default=.001) #0.0003
+    parser.add_argument('--lr', type=float, default=.00025) #0.0003
     parser.add_argument('--momentum', type=float, default=.9)
     parser.add_argument('--data_folder', type=str, default='Dataset/')
     parser.add_argument('--seed', type=int, default=10)

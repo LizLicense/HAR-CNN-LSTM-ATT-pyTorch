@@ -40,7 +40,7 @@ parser = argparse.ArgumentParser()
 # ===================parameters===========================
 parser.add_argument("--nepoch", type=int, default=50) 
 parser.add_argument("--batchsize", type=int, default=32) # 32 for 1% data, others can use 64
-parser.add_argument("--lr", type=float, default=0.001)  # 0.0003
+parser.add_argument("--lr", type=float, default=0.00025)  # 0.0003
 parser.add_argument("--weight_decay", type=float, default=0.001)
 parser.add_argument("--momentum", type=float, default=0.9)
 parser.add_argument("--betas", type=float, default=(0.9, 0.999))
