@@ -11,8 +11,41 @@
  [HAPT dataset](https://archive.ics.uci.edu/ml/machine-learning-databases/00341/); 
  [HHAR dataset](https://archive.ics.uci.edu/ml/machine-learning-databases/00344/)
 
+ [UCIHAR Dataset]https://archive.ics.uci.edu/ml/machine-learning-databases/00240/; 
+ 
+ https://researchdata.ntu.edu.sg/dataset.xhtml?persistentId=doi:10.21979/N9/0SYHTZ
 
-3 datasets are processed(the data processing files to be updated) and placed in `GitFYP_experiment/uci_data`, `GitFYP_experiment/hhar_data`, and `GitFYP_experiment/hapt_data`.
+ [HAPT dataset]https://archive.ics.uci.edu/ml/machine-learning-databases/00341/; 
+
+ [HHAR dataset]https://archive.ics.uci.edu/ml/machine-learning-databases/00344/; https://researchdata.ntu.edu.sg/dataset.xhtml?persistentId=doi:10.21979/N9/OWDFXO
+ 
+Two ways to pre-process the data:
+
+1. read directly from raw data: 
+Download the raw data txt files and save them to 'rawdata' folder. 
+Update the data folder path in the main.py file.
+some examples in hapt_data/rawdata/
+
+2. convert raw data to .pt files:
+
+2.1. In 'Dataprocessing folder', processiong.py file to generate the train.pt, val.pt and test.pt; 
+
+Move the data.pt to the following folder:
+
+data folder: /HAR-CNN-LSTM/GitFYP_experiment/uci_data 
+data folder: /HAR-CNN-LSTM/GitFYP_experiment/hapt_data 
+data folder: /HAR-CNN-LSTM/GitFYP_experiment/hhar_data 
+ 
+Rename the 'train.pt' to 'train_100per.py'
+
+2.2. Create 1, 5, 10, 50% train data
+
+create_few_percetages.py to generate the subset of % train data for each dataset; the result will be saved in 'output_data' folder.
+
+Move the data.pt to the corresponding data folder
+
+some examples in uci_data/
+
 
 ### training mode
 
@@ -22,21 +55,39 @@ Fine-tuning: use "ft" in the training mode
 
 
 ### run the code 
-In `GitFYP_experiment/ssl` folder: run the `main.py` file to excute the code. Other settings in the def get_args() function. 
+
+###  supervised learning
+
+### supervised learning code
+
+cd to: 'GitFYP_experiment/supervised/'
+
+Run 'main_pytorch.py'
+
+Result saved in 'result' folder
+
+Data loader: data_preprocess.py
+
+Network: network.py
+
+CNN-LSTM-Attention network: run the main_pytorch.py in 'Attention' folder
+CNN-LSTM network: run the main_pytorch.py outside the 'Attention' folder
 
 
-##  ========supervised learning========
-1.  `GitFYP_experiment/pytorch_supervised` folder:
-`mian_pytorch.py`: 
-CNN-LSTM model: cd to `GitFYP_experiment` folder, run the `mian_pytorch.py` in `pytorch_supervised/HAPT`, `pytorch_supervised/HHAR`, and `pytorch_supervised/UCI` folder. 
+###  self-supervised learning
 
-CNN-LSTM-ATT model: in `Attention` folder.
+cd to: 'GitFYP_experiment/supervised/'
 
-`network.py`: used for the model network structure.
+Run 'main.py'
 
-`data_preprocess.py`: used for data preprocession, data formatting, train and test loader, etc.
+    can change paramerter in ArgumentParser() in main.py
+    e.g.: training mode: ssl or ft or supervised; fine-tuning data percentage, whether oversample, etc.
 
-2. `result_supervised` folder: stored the confusion matrix, train&test accuracy, and f1 score files.
+Result saved in 'result' folder
+
+Data loader: data_loader.py
+
+Network: network.py
 
 
 **Support Pytorch.**
@@ -56,18 +107,6 @@ In this demo, we will use UCI and HAPT dataset as examples.
 2. self-supervised learning: https://github.com/emadeldeen24/TS-TCC.git; https://github.com/emadeldeen24/eval_ssl_ssc.git
 
 
-
-## Usage
-Go to `HAR-CNN-LSTM` folder, config the folder of your data in `config.py`, and then run `main_pytorch.py`.
-
-
-## Network structure
-What is the most influential deep structure? CNN/RNN it is. So we'll use **CNN-LSTM** in our demo. 
-
-## CNN-lstm structure
-Convolution + pooling + convolution + pooling + lstm + dense + output
-
-That is: 2 convolutions, 2 poolings, 1 lstm, and 1 fully connected layers. 
 
 ## About the inputs
 Regarding UCI dataset, it contains 9 channels of the inputs: (acc_body, acc_total and acc_gyro) on x-y-z. So the input channel is 9.
