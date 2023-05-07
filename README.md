@@ -78,8 +78,7 @@ cd to: 'GitFYP_experiment/supervised/'
 
 Run 'main.py'
 
-    can change paramerter in ArgumentParser() in main.py
-    e.g.: training mode: ssl or ft or supervised; fine-tuning data percentage, whether oversample, etc.
+can change paramerter in ArgumentParser() in main.py, e.g.: training mode: ssl or ft or supervised; fine-tuning data percentage, whether oversample, etc.
 
 Result saved in 'result' folder
 
