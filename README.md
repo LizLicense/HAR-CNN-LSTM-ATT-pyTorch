@@ -58,8 +58,6 @@ Fine-tuning: use "ft" in the training mode
 
 ###  supervised learning
 
-### supervised learning code
-
 cd to: 'GitFYP_experiment/supervised/'
 
 Run 'main_pytorch.py'
