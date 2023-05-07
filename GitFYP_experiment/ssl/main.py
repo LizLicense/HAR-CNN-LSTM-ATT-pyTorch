@@ -26,19 +26,14 @@ criterion = nn.CrossEntropyLoss()
 kl_loss = nn.KLDivLoss()
 mse_loss = nn.MSELoss()
 eps=1e-7
-cosSim_loss=nn.CosineSimilarity() #calculates the cosine similarity between two input vectors
-tripletMargin_loss=nn.TripletMarginLoss() # which enforces similarity between the anchor and positive examples, while maximizing the dissimilarity between the anchor and negative examples.
-cosEmb_loss=nn.CosineEmbeddingLoss(margin=0.0,) # enforces similar images to have a low distance while dissimilar images have a large distance.
-# wasserstein_loss = nn.WassersteinLoss()#which is more stable than other GAN losses
-# jensenD_loss = nn.JensenShannonDivergence() #which calculates the Jensen-Shannon divergence between the two input distributions.
 
 f1_list=[]
 acc_list=[]
 
-# def get_args():
+
 parser = argparse.ArgumentParser()
 # ===================parameters===========================
-parser.add_argument("--nepoch", type=int, default=50) 
+parser.add_argument("--nepoch", type=int, default=50 ) 
 parser.add_argument("--batchsize", type=int, default=32) # 32 for 1% data, others can use 64
 parser.add_argument("--lr", type=float, default=0.00025)  # 0.0003
 parser.add_argument("--weight_decay", type=float, default=0.001)
@@ -48,8 +43,8 @@ parser.add_argument("--seed", type=int, default=10)
 # ===================settings===========================
 parser.add_argument("--data_percentage", type=str, default="10", 
                     help="1, 5, 10, 50, 75, 100")
-parser.add_argument("--training_mode", type=str, default="ssl",
-                    help="Modes of choice: supervised, ssl(self-supervised), ft(fine-tune)")
+parser.add_argument("--training_mode", type=str, default="supervised",
+                    help="Modes of choice: supervised, ssl, ft")
 parser.add_argument("--dataset", type=str, default="HAPT",   
                     help="UCI or HAPT OR HHAR") 
 parser.add_argument("--classes", type=str, default="HAPT_classes", 
@@ -57,7 +52,7 @@ parser.add_argument("--classes", type=str, default="HAPT_classes",
 parser.add_argument("--data_folder", type=str, default="../hapt_data/", 
                     help="../uci_data/ or ../hhar_data/ ../hapt_data/ ") 
 parser.add_argument("--consistency", type=str, default="mse", 
-                    help="mse or criterion or kld or cos or tri or coe or was or jen")
+                    help="mse or criterion or kld")
 parser.add_argument("--save_path", type=str, default="./checkpoint_saved/")
 parser.add_argument("--result_path", type=str, default="./result/")
 parser.add_argument("--augmentation", type=str, default="permute_timeShift_scale_noise",
@@ -72,7 +67,6 @@ parser.add_argument("--predict_features", type=int, default = 6144,
                     
 
 args = parser.parse_args()
-# return args
 
 
 def train(train_loader, test_loader, training_mode):
@@ -223,7 +217,7 @@ def ssl_update(backbone_fe, backbone_temporal, classifier, samples, optimizer, c
     samples = to_device(samples, args.device)
     ori_data=samples["sample_ori"].float()
     trans_data = samples["transformed_samples"].float()
-    aux_labels = samples["aux_labels"].long()
+    aux_labels = samples["aux_labels"].long() #
 
     optimizer.zero_grad()
     orig_features = backbone_fe(ori_data).flatten(1, 2)
@@ -233,7 +227,7 @@ def ssl_update(backbone_fe, backbone_temporal, classifier, samples, optimizer, c
     # Cross-Entropy loss
     loss_1 = criterion(trans_logits, aux_labels)
 
-    if consistency in ["kld", "mse", "cos", "tri", "coe", "was", "jen"]:
+    if consistency in ["kld", "mse", "criterion"]:
         consistency_loss = get_loss(consistency, orig_features, trans_features, orig_logits, trans_logits )
         loss = loss_1 + consistency_loss
     else:
@@ -270,7 +264,6 @@ def supervised_update(backbone_fe, backbone_temporal, classifier, samples, optim
 
 
 # get Network - ssl/supervised
-# update: to device
 def getNetwork(dataset):
     if dataset=="HHAR":
         backbone_fe = net.cnnNetwork_HHAR().to(args.device)
@@ -284,18 +277,12 @@ def getNetwork(dataset):
 
 def get_loss(consistency, orig_features, trans_features, orig_logits, trans_logits):
     if consistency == "kld":
-    # loss_2 = kl_loss(ori_data, trans_data)
+    
         trans_features = trans_features+eps
         # normalization
         orig_features = orig_features/orig_features.max()
         trans_features = trans_features/trans_features.max()
         consistency_loss = kl_loss(orig_features, trans_features)
-    # loss_2 = kl_loss(orig_logits+eps, trans_logits)
-    # print(torch.isnan(ori_data).any())
-    # print(torch.isnan(trans_data).any())
-    # torch.save(orig_features, 'tensor_saved/orig_features.pt')
-    # torch.save(trans_features, 'tensor_saved/trans_logits.pt')
-    # print("1: ", loss_1.item(), "2: ", loss_2.item())
 
     elif consistency == "mse":
         # loss_3 = mse_loss(orig_logits, trans_logits)
@@ -303,22 +290,6 @@ def get_loss(consistency, orig_features, trans_features, orig_logits, trans_logi
         consistency_loss = loss_4
         # print("1: ", loss_1.item(), "3: ", loss_3.item())
 
-    elif consistency == "cos":
-        # torch.save(orig_features, 'tensor_saved/orig_features_cos.pt')
-        # torch.save(trans_features, 'tensor_saved/trans_logits_cos.pt')
-        consistency_loss = cosSim_loss(orig_features, trans_features)
-
-    elif consistency == "tri":
-        consistency_loss = tripletMargin_loss(orig_features,orig_features, trans_features)
-    elif consistency == "coe" :
-        # cosine similarity between original and transformed data
-        cosine_similarity = F.cosine_similarity(orig_features, trans_features)
-        # target tensor, indicating whether the original and transformed data are similar
-        target = torch.ones(cosine_similarity.size())
-        # print(cosine_similarity.size())
-        # print(target.size())
-        consistency_loss = cosEmb_loss(orig_features,trans_features, target.to(args.device))
-    # elif consistency == "cos", "tri", "was", "jen":
     else: 
         consistency_loss = 0
     
@@ -346,7 +317,6 @@ def save_results(best_acc, best_f1):
 
 
 if __name__ == "__main__":
-    # args = get_args()
     torch.manual_seed(args.seed)
     train_loader, test_loader = load_data(args.batchsize,args.data_folder, args.training_mode, args.data_percentage,
                                           augmentation=args.augmentation, oversample=args.oversample)
