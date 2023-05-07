@@ -108,17 +108,6 @@ In this demo, we will use UCI and HAPT dataset as examples.
 
 
 
-## About the inputs
-Regarding UCI dataset, it contains 9 channels of the inputs: (acc_body, acc_total and acc_gyro) on x-y-z. So the input channel is 9.
-
-Regarding HAPT dataset, it contains 1 inputswith 561 features. I split them into 3 x 187. So the input channel is 3.
-
-**CNN-LSTM** archetechture achived 95% accuracy in both dataset.
-
-CNN-LSTM with UCI dataset:![CNN-LSTM with UCI dataset](cnn-lstm-pyTorch/result/plot_cnn-lstm_HAPT.png)
-
-CNN-LSTM with HAPT dataset:![CNN-LSTM with HAPT dataset](cnn-lstm-pyTorch/result/plot_cnn-lstm_UCI.png)
-
 
 
 ## A CNN-LSTM Approach to Human Activity Recognition in pyTorch with UCI and HAPT dataset
