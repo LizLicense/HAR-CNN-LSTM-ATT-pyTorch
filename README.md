@@ -23,8 +23,8 @@ Two ways to pre-process the data:
 
 1. read directly from raw data: 
 Download the raw data txt files and save them to 'rawdata' folder. 
-Update the data folder path in the main.py file.
-some examples in hapt_data/rawdata/
+
+Update the data folder path in the main.py file. Some examples in hapt_data/rawdata/
 
 2. convert raw data to .pt files:
 
@@ -33,7 +33,9 @@ some examples in hapt_data/rawdata/
 Move the data.pt to the following folder:
 
 data folder: /HAR-CNN-LSTM/GitFYP_experiment/uci_data 
+
 data folder: /HAR-CNN-LSTM/GitFYP_experiment/hapt_data 
+
 data folder: /HAR-CNN-LSTM/GitFYP_experiment/hhar_data 
  
 Rename the 'train.pt' to 'train_100per.py'
@@ -69,11 +71,12 @@ Data loader: data_preprocess.py
 Network: network.py
 
 CNN-LSTM-Attention network: run the main_pytorch.py in 'Attention' folder
+
+
 CNN-LSTM network: run the main_pytorch.py outside the 'Attention' folder
 
 
 ###  self-supervised learning
-
 cd to: 'GitFYP_experiment/supervised/'
 
 Run 'main.py'
@@ -101,7 +104,8 @@ In this demo, we will use UCI and HAPT dataset as examples.
 
 ## Code reference
 1. supervised learning: https://github.com/jindongwang/Deep-learning-activity-recognition.git
-2. self-supervised learning: https://github.com/emadeldeen24/TS-TCC.git; https://github.com/emadeldeen24/eval_ssl_ssc.git
+2. 
+3. self-supervised learning: https://github.com/emadeldeen24/TS-TCC.git; https://github.com/emadeldeen24/eval_ssl_ssc.git
 
 
 
